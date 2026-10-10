@@ -1,5 +1,6 @@
 name = "kx-bot"
 main = "src/index.js"
+account_id = "427aef46cf7f42912bbf17bd3b967e6a"
 compatibility_date = "2025-09-01"
 
 [ai]
