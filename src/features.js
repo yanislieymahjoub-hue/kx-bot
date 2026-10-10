@@ -97,11 +97,11 @@ export async function handleFeatures(name, i, env, ctx, h) {
     const theme = h.opt(i, "theme") ?? "automatisation, n8n, API, agents IA, bonnes pratiques FDE";
     ctx.waitUntil((async () => {
       let q;
-      for (let k = 0; k < 2 && !q; k++) {
+      for (let k = 0; k < 1 && !q; k++) {
         const raw = await h.ask(env, [
           { role: "system", content: "Tu crées des quiz techniques en français. Tu réponds uniquement avec un objet JSON valide." },
           { role: "user", content: `Crée une question à choix multiples de niveau intermédiaire sur: ${theme}. Format strict: {"question":"...","choix":["...","...","...","..."],"reponse":0,"explication":"..."} où reponse est l'index (0 à 3) de la bonne réponse. Choix courts (moins de 70 caractères). Explication en 2 phrases.` },
-        ], 600);
+        ], 900);
         try { q = JSON.parse(raw.match(/\{[\s\S]*\}/)[0]); if (!Array.isArray(q.choix) || q.choix.length !== 4) q = null; } catch { q = null; }
       }
       if (!q) return h.followUp(env, i, { content: "L'IA n'a pas réussi à générer le quiz, relance /quiz." });
@@ -132,7 +132,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
         { role: "system", content: "Tu aides des FDE à présenter une automatisation à un client. Français, vouvoiement, ton direct, zéro jargon technique, pas de promesse chiffrée inventée." },
         { role: "user", content: `Automatisation: ${desc}\nInterlocuteur: ${cible}\nÉcris: 1) un pitch oral de 4 phrases centré sur le temps gagné et la tranquillité, 2) un message LinkedIn de 3 lignes, 3) les 3 objections probables avec une réponse courte chacune.` },
       ], 700);
-      await h.followUp(env, i, { embeds: [{ color: h.VIOLET, title: "🎤 Ton pitch client", description: txt, footer: { text: "Généré par l'IA de KX · à adapter à ton client" } }] });
+      await h.followUp(env, i, { embeds: [{ color: h.VIOLET, title: "🎤 Ton pitch client", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · à adapter à ton client" } }] });
     })());
     return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
   }
@@ -146,7 +146,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
         { role: "system", content: explain ? "Tu expliques du code, des workflows ou des notions techniques à un apprenti FDE, en français, simplement, avec un exemple si utile. 12 lignes maximum." : "Tu résumes un message Discord en français en 3 à 5 puces courtes, sans inventer." },
         { role: "user", content: resolvedMsg.content.slice(0, 6000) },
       ], 600);
-      await h.followUp(env, i, { embeds: [{ color: h.LILAS, title: explain ? "💡 Explication" : "📝 Résumé", description: txt, footer: { text: `Message de ${who(resolvedMsg.author)}` } }] });
+      await h.followUp(env, i, { embeds: [{ color: h.LILAS, title: explain ? "💡 Explication" : "📝 Résumé", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: `Message de ${who(resolvedMsg.author)}` } }] });
     })());
     return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
   }
@@ -276,7 +276,7 @@ export async function handleFeaturesModal(i, env, ctx, h) {
       { role: "system", content: "Tu es un FDE senior qui fait une revue bienveillante mais exigeante d'automatisations (n8n, Make, Python, agents IA). Français, tutoiement, concret." },
       { role: "user", content: `Contexte: ${f.contexte}\n\nContenu à relire:\n${f.contenu}\n\nRéponds avec ces sections: **Ce qui est bien** (2 puces), **Risques** (erreurs non gérées, sécurité, données personnelles, coûts, limites d'API), **Améliorations concrètes** (3 à 5 puces actionnables), **Prêt pour un client ?** (oui/non + pourquoi, 1 phrase), **Note** /10.` },
     ], 900);
-    await h.followUp(env, i, { embeds: [{ color: h.VIOLET, title: "🔍 Review IA", description: txt, footer: { text: "Généré par l'IA de KX · demande aussi l'avis d'un mentor dans le forum des rendus" } }] });
+    await h.followUp(env, i, { embeds: [{ color: h.VIOLET, title: "🔍 Review IA", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · demande aussi l'avis d'un mentor dans le forum des rendus" } }] });
   })());
   return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
 }

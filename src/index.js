@@ -52,13 +52,22 @@ async function followUp(env, interaction, data) {
 const opt = (interaction, name) => interaction.data.options?.find((o) => o.name === name)?.value;
 const isStaff = (interaction) => (BigInt(interaction.member?.permissions ?? "0") & 0x8n) === 0x8n || (BigInt(interaction.member?.permissions ?? "0") & 0x2000n) === 0x2000n;
 
-async function ask(env, messages, max_tokens = 700) {
-  const out = await env.AI.run(AI_MODEL, { messages, max_tokens });
-  let text = out?.response ?? out?.choices?.[0]?.message?.content ?? "";
-  text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-  return text.slice(0, 3900) || "Je n'ai pas réussi à répondre, réessaie dans un instant.";
+async function ask(env, messages, max_tokens = 1200) {
+  // Qwen 3: /no_think coupe la phase de réflexion, sinon elle consomme tout le budget
+  const msgs = messages.map((m, k) => (k === messages.length - 1 && m.role === "user" ? { ...m, content: `${m.content}\n\n/no_think` } : m));
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const out = await env.AI.run(AI_MODEL, { messages: msgs, max_tokens });
+      let text = out?.response ?? out?.choices?.[0]?.message?.content ?? "";
+      if (typeof text !== "string") text = JSON.stringify(text);
+      text = text.replace(/<think>[\s\S]*?(<\/think>|$)/g, "").trim();
+      if (text) return text.slice(0, 3900);
+    } catch (e) {
+      console.log("IA erreur", e.message);
+    }
+  }
+  return "";
 }
-
 // ------------------------------------------------------------ commandes
 async function handleCommand(interaction, env, ctx) {
   const name = interaction.data.name;
@@ -92,7 +101,7 @@ async function handleCommand(interaction, env, ctx) {
         { role: "user", content: question },
       ]);
       await followUp(env, interaction, {
-        embeds: [{ color: VIOLET, author: { name: `${user.global_name ?? user.username} demande` }, title: question.slice(0, 250), description: answer, footer: { text: "Réponse générée par l'IA de KX · à vérifier" } }],
+        embeds: [{ color: VIOLET, author: { name: `${user.global_name ?? user.username} demande` }, title: question.slice(0, 250), description: answer || "Je n'ai pas réussi à répondre, réessaie dans un instant.", footer: { text: "Réponse générée par l'IA de KX · à vérifier" } }],
       });
     })());
     return json({ type: 5 });
@@ -111,7 +120,7 @@ async function handleCommand(interaction, env, ctx) {
             { role: "user", content: transcript },
           ], 500)
         : "Rien à résumer ici pour l'instant.";
-      await followUp(env, interaction, { embeds: [{ color: LILAS, title: `Résumé des ${n} derniers messages`, description: answer, footer: FOOTER }] });
+      await followUp(env, interaction, { embeds: [{ color: LILAS, title: `Résumé des ${n} derniers messages`, description: answer || "Rien à résumer pour l'instant.", footer: FOOTER }] });
     })());
     return json({ type: 5, data: { flags: EPHEMERAL } });
   }

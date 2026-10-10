@@ -258,7 +258,8 @@ export async function postDefi(env, h) {
   const text = await h.ask(env, [
     { role: "system", content: "Tu écris en français, de façon concrète et précise." },
     { role: "user", content: h.DEFI_PROMPT },
-  ], 700);
+  ], 1500);
+  if (!text) { console.log("Défi non publié: réponse IA vide"); return; }
   const week = Math.ceil((((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 864e5) + 1) / 7);
   await h.discord(env, "POST", `/channels/${h.CHANNELS.defi}/messages`, {
     embeds: [{
