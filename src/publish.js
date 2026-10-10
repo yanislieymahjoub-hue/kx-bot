@@ -10,6 +10,8 @@ const SEND = 2048n, PUB_THREADS = 1n << 35n, PRIV_THREADS = 1n << 36n, SEND_IN_T
 // Rôles qui peuvent inviter (les administrateurs le peuvent toujours)
 export const INVITE_ROLES = ["Fondateur", "Équipe KX", "Mentor"];
 const GUIDE_NAME = "📖・commandes";
+// Bots externes et le nom qu'ils portent sur le serveur
+const EXTERNAL_BOTS = { "411916947773587456": "KX Musique" }; // Jockie Music
 
 export async function runPublish(env, h) {
   const out = [];
@@ -118,6 +120,19 @@ export async function runPublish(env, h) {
       done.push(b.name);
     }
     return [done.length ? `réglés pour ${done.join(", ")}` : "", absent.length ? `pas encore sur le serveur ${absent.join(", ")}` : ""].filter(Boolean).join(", ");
+  });
+
+  // ---------- bots externes renommés aux couleurs de KX
+  await step("Surnoms des bots externes", async () => {
+    const done = [];
+    for (const [id, nick] of Object.entries(EXTERNAL_BOTS)) {
+      const m = await h.discord(env, "GET", `/guilds/${G}/members/${id}`);
+      if (!m.ok) continue;
+      if ((await m.json()).nick === nick) { done.push(nick); continue; }
+      await ok(await h.discord(env, "PATCH", `/guilds/${G}/members/${id}`, { nick }));
+      done.push(nick);
+    }
+    return done.length ? done.join(", ") : "aucun bot externe sur le serveur";
   });
 
   // ---------- invitations réservées à l'équipe et aux mentors

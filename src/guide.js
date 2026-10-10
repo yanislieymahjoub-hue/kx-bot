@@ -120,6 +120,11 @@ export function guideV2(ephemeral = false) {
         section(`### ${BOTS[k].name}\n-# ${role}`, asset(`bots/${BOTS[k].logo}.png`)),
         text(lines.join("\n")),
       ])),
+      box(0x5865f2, [text([
+        "### KX Musique\n-# La musique dans les salons vocaux",
+        "Rejoins un salon vocal puis tape `/play` suivi d'un titre ou d'un lien.",
+        "`/skip` passe au titre suivant · `/stop` arrête la musique",
+      ].join("\n"))]),
     ],
   };
 }
