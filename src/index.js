@@ -278,8 +278,8 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    if (event.cron === "0 7 * * 1") ctx.waitUntil(Promise.all([postDefi(env, helpers), buildInPublic(env, helpers)]));
-    else if (event.cron === "0 16 * * 0") ctx.waitUntil(weeklyLeaderboard(env, helpers));
+    if (event.cron === "0 7 * * MON") ctx.waitUntil(Promise.all([postDefi(env, helpers), buildInPublic(env, helpers)]));
+    else if (event.cron === "0 16 * * SUN") ctx.waitUntil(weeklyLeaderboard(env, helpers));
     else ctx.waitUntil(veille(env));
   },
 };
