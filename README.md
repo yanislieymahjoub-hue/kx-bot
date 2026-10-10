@@ -30,6 +30,7 @@ Bot Discord du serveur KX Automatisation, hébergé sur Cloudflare Workers (grat
 | `/atelier` | équipe | Événement Discord + annonce avec ping Notif lives |
 | `/stats` | tous | Membres, niveaux FDE, points, quiz |
 | `/kx-setup` | admin | Sujets des salons, tags des forums, salon support, écran d'accueil, accueil guidé |
+| `/kx-publier` | admin | Logo KX sur le bot et le serveur, mode d'emploi dans #bienvenue, salon 📖・commandes, invitations réservées à Fondateur, Équipe KX et Mentor |
 | Clic droit message | tous | Résumer avec l'IA, Expliquer avec l'IA, Remercier l'auteur |
 | Clic droit membre | tous | Profil FDE |
 
@@ -46,3 +47,6 @@ Chaque push sur `main` redéploie le bot, transmet le jeton au Worker de façon 
 
 ## Réglages
 `src/config.js`: salons, rôles, flux RSS, modèle IA et consignes de l'IA.
+`src/guide.js`: textes du guide des commandes et de l'accueil (relancer `/kx-publier` après modification).
+`src/publish.js`: `INVITE_ROLES`, les rôles autorisés à inviter.
+`assets/`: logo KX (SVG d'origine et PNG 512).

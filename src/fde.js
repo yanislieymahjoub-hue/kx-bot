@@ -1,5 +1,6 @@
 // Parcours FDE: candidatures, niveaux, missions, défi hebdo, profil, aide
 import { store } from "./store.js";
+import { guideEmbeds } from "./guide.js";
 
 const MANAGE_ROLES = 0x10000000n;
 
@@ -68,20 +69,7 @@ function modalRow(id, label, style, required = true, max = 400, placeholder) {
 export async function handleFde(name, i, env, ctx, h) {
   const user = i.member?.user ?? i.user;
 
-  if (name === "aide") {
-    return h.reply({
-      embeds: [{
-        title: "KX Bot · Commandes", color: h.VIOLET, footer: h.FOOTER,
-        fields: [
-          { name: "🤖 IA", value: "`/ia` poser une question\n`/review` faire relire ton workflow ou ton code\n`/pitch` transformer ton automatisation en pitch client\n`/quiz` question FDE (+5 pts)\n`/resume` résumer un salon\nClic droit sur un message → Applications → Résumer / Expliquer avec l'IA" },
-          { name: "🎓 Parcours FDE", value: "`/candidature` rejoindre le parcours\n`/profil` niveau et points\n🌱 Apprenti → 🛠️ En formation → 🏅 FDE Certifié (accès aux missions)" },
-          { name: "🏆 Communauté", value: "`/merci` remercier quelqu'un (+10 pts)\n`/classement` top de la semaine ou général\n`/stats` la communauté en chiffres\n`/suggestion` proposer une idée\n`/ticket` parler en privé à l'équipe" },
-          { name: "💼 Outils", value: "`/roi` calculer le temps gagné par une automatisation\n`/contact` `/rdv` `/kx` travailler avec KX" },
-          { name: "🛡️ Équipe et mentors", value: "`/niveau` `/points` `/mission` `/defi` `/atelier` `/annonce` `/kx-roles` `/kx-setup`" },
-        ],
-      }],
-    }, true);
-  }
+  if (name === "aide") return h.reply({ embeds: guideEmbeds() }, true);
 
   if (name === "candidature") {
     return h.json({

@@ -107,6 +107,7 @@ const commands = [
   },
   { name: "stats", description: "La communauté KX en chiffres" },
   { name: "kx-setup", description: "(Admin) Configurer salons, forums, support, accueil", default_member_permissions: "8" },
+  { name: "kx-publier", description: "(Admin) Logo, mode d'emploi d'accueil, guide des commandes, invitations", default_member_permissions: "8" },
 
   // Menus clic droit (Applications)
   { type: 3, name: "Résumer avec l'IA" },

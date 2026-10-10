@@ -2,6 +2,7 @@
 import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM, LADDER, MENTOR_ROLE, DEFI_PROMPT } from "./config.js";
 import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
 import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLeaderboard, buildInPublic } from "./features.js";
+import { runPublish } from "./publish.js";
 export { KXStore } from "./store.js";
 
 const API = "https://discord.com/api/v10";
@@ -178,6 +179,12 @@ async function handleCommand(interaction, env, ctx) {
       embeds: [{ title: "Choisis tes notifications", description: "Clique pour ajouter ou retirer un rôle. Tu peux changer quand tu veux.", color: LILAS, footer: FOOTER }],
       components: [{ type: 1, components: SELF_ROLES.map(([label, emoji]) => ({ type: 2, style: 2, label, emoji: { name: emoji }, custom_id: `role:${label}` })) }],
     });
+  }
+
+  if (name === "kx-publier") {
+    if ((BigInt(interaction.member?.permissions ?? "0") & 0x8n) !== 0x8n) return reply({ content: "Commande réservée aux administrateurs." }, true);
+    ctx.waitUntil((async () => followUp(env, interaction, { content: (await runPublish(env, helpers)).join("\n").slice(0, 1900) }))());
+    return json({ type: 5, data: { flags: EPHEMERAL } });
   }
 
   if (name === "Profil FDE") {
