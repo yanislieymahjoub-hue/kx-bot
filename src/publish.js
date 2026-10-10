@@ -2,6 +2,7 @@
 import { LOGO_DATA_URI } from "./logo.js";
 import { guideEmbeds, welcomeGuide } from "./guide.js";
 import { SELF_ROLES } from "./config.js";
+import { store } from "./store.js";
 
 const INVITE = 1n;
 const SEND = 2048n, PUB_THREADS = 1n << 35n, PRIV_THREADS = 1n << 36n, SEND_IN_THREADS = 1n << 38n;
@@ -16,19 +17,31 @@ export async function runPublish(env, h) {
   const get = async (path) => (await ok(await h.discord(env, "GET", path))).json();
   const C = h.CHANNELS, G = h.GUILD_ID, botId = env.DISCORD_APP_ID;
 
-  // ---------- logo
-  await step("Avatar du bot", async () => { await ok(await h.discord(env, "PATCH", "/users/@me", { avatar: LOGO_DATA_URI })); });
-  await step("Profil de l'application", async () => { await ok(await h.discord(env, "PATCH", "/applications/@me", {
-    icon: LOGO_DATA_URI,
-    description: "L'assistant de la communauté KX Automatisation. IA, parcours FDE, défis, points et tickets. Tape /aide pour tout voir.",
-  })); });
-  await step("Icône, description et règlement du serveur", async () => {
-    await ok(await h.discord(env, "PATCH", `/guilds/${G}`, {
+  // ---------- logo (appliqué une seule fois par version du fichier, Discord limite les changements d'avatar)
+  const logoHash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(LOGO_DATA_URI)))].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+  let applied = (await store(env, "setting", { key: "logo" }).catch(() => ({}))).value;
+  if (!applied) {
+    // premier passage avec ce suivi: si le bot et le serveur ont déjà une image, on considère le logo en place
+    const [meUser, g] = await Promise.all([get("/users/@me"), get(`/guilds/${G}`)]);
+    if (meUser.avatar && g.icon) { applied = logoHash; await store(env, "setting", { key: "logo", value: logoHash }).catch(() => {}); }
+  }
+  if (applied === logoHash) out.push("✅ Logo du bot et du serveur · déjà en place");
+  else {
+    const before = out.length;
+    await step("Avatar du bot", async () => { await ok(await h.discord(env, "PATCH", "/users/@me", { avatar: LOGO_DATA_URI })); });
+    await step("Profil de l'application", async () => { await ok(await h.discord(env, "PATCH", "/applications/@me", {
       icon: LOGO_DATA_URI,
-      description: "La communauté des FDE. Automatisation, agents IA et missions clients, par KX Automatisation.",
-      rules_channel_id: C.reglement,
-    }));
-  });
+      description: "L'assistant de la communauté KX Automatisation. IA, parcours FDE, défis, points et tickets. Tape /aide pour tout voir.",
+    })); });
+    await step("Icône et description du serveur", async () => {
+      await ok(await h.discord(env, "PATCH", `/guilds/${G}`, {
+        icon: LOGO_DATA_URI,
+        description: "La communauté des FDE. Automatisation, agents IA et missions clients, par KX Automatisation.",
+      }));
+    });
+    if (out.slice(before).every((l) => l.startsWith("✅"))) await store(env, "setting", { key: "logo", value: logoHash }).catch(() => {});
+  }
+  await step("Salon du règlement", async () => { await ok(await h.discord(env, "PATCH", `/guilds/${G}`, { rules_channel_id: C.reglement })); });
 
   let chans = await get(`/guilds/${G}/channels`);
   const guild = await get(`/guilds/${G}`);
@@ -97,23 +110,41 @@ export async function runPublish(env, h) {
   // ---------- invitations réservées à l'équipe et aux mentors
   await step("Invitations", async () => {
     const roles = await get(`/guilds/${G}/roles`);
+    const me = await get(`/guilds/${G}/members/${botId}`);
+    const top = Math.max(0, ...roles.filter((r) => me.roles.includes(r.id)).map((r) => r.position));
     const allowedIds = roles.filter((r) => INVITE_ROLES.includes(r.name)).map((r) => r.id);
     let removed = 0, granted = 0;
+    const failed = [];
+    const patch = async (r, permissions) => {
+      const res = await h.discord(env, "PATCH", `/guilds/${G}/roles/${r.id}`, { permissions: String(permissions) });
+      if (!res.ok) failed.push(`${r.name === "@everyone" ? "@everyone" : r.name} (${res.status})`);
+      return res.ok;
+    };
     for (const r of roles) {
-      if (r.managed) continue;
       const p = BigInt(r.permissions);
+      if (r.managed || p & 8n) continue; // les administrateurs peuvent toujours inviter
+      if (r.id !== G && r.position >= top) { if (!allowedIds.includes(r.id) && p & INVITE) failed.push(`${r.name} (au-dessus du bot)`); continue; }
       const allowed = allowedIds.includes(r.id);
-      if (!allowed && p & INVITE) { await ok(await h.discord(env, "PATCH", `/guilds/${G}/roles/${r.id}`, { permissions: String(p & ~INVITE) })); removed++; }
-      if (allowed && !(p & INVITE)) { await ok(await h.discord(env, "PATCH", `/guilds/${G}/roles/${r.id}`, { permissions: String(p | INVITE) })); granted++; }
+      if (!allowed && p & INVITE && (await patch(r, p & ~INVITE))) removed++;
+      if (allowed && !(p & INVITE) && (await patch(r, p | INVITE))) granted++;
     }
     let overwrites = 0;
     for (const c of chans) for (const o of c.permission_overwrites ?? []) {
       if (!(BigInt(o.allow) & INVITE) || allowedIds.includes(o.id)) continue;
-      await ok(await h.discord(env, "PUT", `/channels/${c.id}/permissions/${o.id}`, { type: o.type, allow: String(BigInt(o.allow) & ~INVITE), deny: o.deny }));
-      overwrites++;
+      const res = await h.discord(env, "PUT", `/channels/${c.id}/permissions/${o.id}`, { type: o.type, allow: String(BigInt(o.allow) & ~INVITE), deny: o.deny });
+      if (res.ok) overwrites++; else failed.push(`#${c.name} (${res.status})`);
     }
+    const everyone = roles.find((r) => r.id === G);
+    const stillOpen = everyone && BigInt(everyone.permissions) & INVITE && failed.some((f) => f.startsWith("@everyone"));
     const missing = INVITE_ROLES.filter((n) => !roles.some((r) => r.name === n));
-    return `retiré à ${removed} rôle${removed > 1 ? "s" : ""}${overwrites ? ` et ${overwrites} salon${overwrites > 1 ? "s" : ""}` : ""}, accordé à ${INVITE_ROLES.filter((n) => !missing.includes(n)).join(", ")}${granted ? ` (${granted} modifié${granted > 1 ? "s" : ""})` : ""}${missing.length ? `, rôle introuvable ${missing.join(", ")}` : ""}`;
+    const msg = [
+      `retiré à ${removed} rôle${removed > 1 ? "s" : ""}${overwrites ? ` et ${overwrites} salon${overwrites > 1 ? "s" : ""}` : ""}`,
+      `réservé à ${INVITE_ROLES.filter((n) => !missing.includes(n)).join(", ")} et aux administrateurs${granted ? ` (${granted} rôle${granted > 1 ? "s" : ""} complété${granted > 1 ? "s" : ""})` : ""}`,
+      missing.length ? `rôle introuvable ${missing.join(", ")}` : "",
+      failed.length ? `échec ${failed.join(", ")}` : "",
+    ].filter(Boolean).join(", ");
+    if (stillOpen || failed.length) throw new Error(msg);
+    return msg;
   });
 
   // ---------- salon des mises à jour Discord rangé avec l'équipe

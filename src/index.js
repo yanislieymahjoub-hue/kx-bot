@@ -37,7 +37,7 @@ async function discord(env, method, path, body) {
     headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, "content-type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) console.log("Discord", method, path, res.status, await res.text());
+  if (!res.ok) console.log("Discord", method, path, res.status, await res.clone().text());
   return res;
 }
 

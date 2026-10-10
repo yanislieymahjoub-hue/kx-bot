@@ -10,6 +10,7 @@ export class KXStore {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS quiz (id TEXT PRIMARY KEY, answer INTEGER, explanation TEXT, ts INTEGER)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS quiz_try (id TEXT, user TEXT, PRIMARY KEY (id, user))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS ai_usage (user TEXT, day TEXT, n INTEGER, PRIMARY KEY (user, day))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
   }
 
   rows(q, ...b) { return this.sql.exec(q, ...b).toArray(); }
@@ -69,6 +70,12 @@ export class KXStore {
       quizzes: this.rows(`SELECT COUNT(*) AS n FROM quiz`)[0].n,
       thanks: this.rows(`SELECT COUNT(*) AS n FROM thanks`)[0].n,
     };
+  }
+
+  // réglages simples (ex. version du logo déjà appliquée)
+  setting({ key, value }) {
+    if (value !== undefined) this.sql.exec(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, String(value));
+    return { value: this.rows(`SELECT value FROM settings WHERE key = ?`, key)[0]?.value ?? null };
   }
 
   async fetch(request) {
