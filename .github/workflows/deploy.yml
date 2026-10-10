@@ -1,0 +1,41 @@
+name: Déployer le KX Bot
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Vérifier les secrets
+        env:
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BOT: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          [ -n "$CF" ] || { echo "Secret CLOUDFLARE_API_TOKEN manquant"; exit 1; }
+          [ -n "$BOT" ] || { echo "Secret DISCORD_BOT_TOKEN manquant"; exit 1; }
+
+      - name: Déployer sur Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --yes wrangler@4 deploy
+
+      - name: Transmettre le jeton du bot au Worker (chiffré)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: printf '%s' "$DISCORD_BOT_TOKEN" | npx --yes wrangler@4 secret put DISCORD_BOT_TOKEN
+
+      - name: Enregistrer les commandes slash
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          export DISCORD_APP_ID=$(grep '^DISCORD_APP_ID' wrangler.toml | cut -d'"' -f2)
+          node scripts/register-commands.mjs

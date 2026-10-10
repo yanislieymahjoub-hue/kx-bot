@@ -1,0 +1,19 @@
+name = "kx-bot"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[ai]
+binding = "AI"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[vars]
+# Identifiants publics de l'application Discord (pas secrets)
+DISCORD_APP_ID = "A_REMPLIR"
+DISCORD_PUBLIC_KEY = "A_REMPLIR"
+# Adresse de la CT qui reçoit les demandes /contact (vide = désactivé)
+CT_WEBHOOK_URL = ""
+
+[observability]
+enabled = true
