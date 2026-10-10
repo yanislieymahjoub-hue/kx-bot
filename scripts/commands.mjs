@@ -1,10 +1,8 @@
-// Enregistre les commandes slash sur le serveur KX. Lancé automatiquement par GitHub Actions.
-const { DISCORD_BOT_TOKEN, DISCORD_APP_ID } = process.env;
-const GUILD_ID = "1558481384601813183";
+// Définition de toutes les commandes. Chaque commande est enregistrée sur le bot qui la porte (voir src/bots.js).
 const MANAGE_MESSAGES = String(0x2000);
 const MANAGE_ROLES = String(0x10000000);
 
-const commands = [
+export const COMMANDS = [
   { name: "kx", description: "Présentation de KX Automatisation" },
   { name: "rdv", description: "Prendre rendez-vous avec KX" },
   { name: "contact", description: "Décrire ton besoin à l'équipe KX" },
@@ -106,6 +104,7 @@ const commands = [
     ],
   },
   { name: "stats", description: "La communauté KX en chiffres" },
+  { name: "veille", description: "Les dernières actus IA (visible par toi seul)" },
   { name: "kx-setup", description: "(Admin) Configurer salons, forums, support, accueil", default_member_permissions: "8" },
   { name: "kx-publier", description: "(Admin) Logo, mode d'emploi d'accueil, guide des commandes, invitations", default_member_permissions: "8" },
 
@@ -116,13 +115,3 @@ const commands = [
   { type: 2, name: "Profil FDE" },
 ];
 
-const res = await fetch(`https://discord.com/api/v10/applications/${DISCORD_APP_ID}/guilds/${GUILD_ID}/commands`, {
-  method: "PUT",
-  headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}`, "content-type": "application/json" },
-  body: JSON.stringify(commands),
-});
-console.log("Enregistrement des commandes:", res.status);
-if (!res.ok) {
-  console.log(await res.text());
-  process.exit(1);
-}

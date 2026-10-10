@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Sans;src:url(fonts/KXAtelierMono-Regular.woff2);font-weight:400}
+@font-face{font-family:Sans;src:url(fonts/KXAtelierMono-SemiBold.woff2);font-weight:600}
+@font-face{font-family:Titre;src:url(fonts/KXCabaretRozha-Regular.woff2)}
+:root{--or:#FFD479;--fond:#0b0818}
+*{box-sizing:border-box;margin:0}
+html,body{width:1200px;height:480px;overflow:hidden;background:var(--fond)}
+.stage{position:relative;width:1200px;height:480px;overflow:hidden;font-family:Sans;color:#efeaff;
+  background:radial-gradient(900px 300px at 600px 330px,#1d1240 0%,transparent 70%),radial-gradient(500px 220px at 600px 60px,#170f33 0%,transparent 70%),var(--fond)}
+.head{position:absolute;left:0;right:0;top:46px;text-align:center}
+.label{font-size:14px;letter-spacing:.34em;color:var(--or);font-weight:600;text-transform:uppercase;opacity:0;animation:rise .7s ease-out .1s forwards}
+h1{font-family:Titre;font-weight:400;font-size:58px;margin-top:10px;opacity:0;filter:blur(8px);transform:translateY(14px);animation:word .9s cubic-bezier(.2,.8,.2,1) .3s forwards}
+.rail{position:absolute;left:110px;right:110px;top:234px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,212,121,.55),transparent);transform:scaleX(0);animation:grow 1.4s cubic-bezier(.6,0,.2,1) .6s forwards}
+@keyframes grow{to{transform:scaleX(1)}}
+.pulse{position:absolute;top:230px;left:110px;width:9px;height:9px;border-radius:50%;background:var(--or);box-shadow:0 0 14px 5px rgba(255,212,121,.5);opacity:0;animation:run 3.2s ease-in-out 2.4s infinite}
+@keyframes run{0%{left:110px;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:1085px;opacity:0}}
+.bots{position:absolute;left:60px;right:60px;top:175px;display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.bot{display:flex;flex-direction:column;align-items:center;text-align:center;opacity:0;transform:translateY(26px)}
+.ico{position:relative;width:118px;height:118px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 40%,color-mix(in oklab,var(--c) 22%,#120c26),#0b0818 72%);border:1px solid color-mix(in oklab,var(--c) 40%,transparent);
+  box-shadow:0 0 0 0 transparent}
+.ico::after{content:"";position:absolute;inset:-18px;border-radius:50%;background:radial-gradient(circle,color-mix(in oklab,var(--c) 45%,transparent),transparent 65%);opacity:0}
+.ico img{width:84px;height:84px;transform:rotate(-90deg) scale(.4);opacity:0}
+.name{margin-top:18px;font-size:17px;font-weight:600;letter-spacing:.02em}
+.role{margin-top:6px;font-size:13px;color:#a99fc9;line-height:1.35;max-width:150px}
+.dot{width:7px;height:7px;transform:rotate(45deg);background:var(--c);margin-top:12px;box-shadow:0 0 10px var(--c)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes word{to{opacity:1;filter:blur(0);transform:none}}
+@keyframes card{to{opacity:1;transform:none}}
+@keyframes logo{0%{transform:rotate(-90deg) scale(.4);opacity:0}70%{transform:rotate(6deg) scale(1.06);opacity:1}100%{transform:none;opacity:1}}
+@keyframes glow{0%{opacity:0}35%{opacity:1}100%{opacity:.35}}
+</style></head>
+<body><div class="stage">
+  <div class="head"><div class="label">L'équipe des bots KX</div><h1>Un bot pour chaque mission.</h1></div>
+  <div class="rail"></div><div class="pulse"></div>
+  <div class="bots" id="bots"></div>
+</div>
+<script>
+const B=[["bot","#8b5cf6","KX Bot","Accueil, contact et tickets"],["ia","#22d3ee","KX IA","Questions, résumés, relectures"],["academie","#f5b83d","KX Académie","Parcours FDE et défis"],["missions","#22c55e","KX Missions","Contrats pour les certifiés"],["arene","#f43f5e","KX Arène","Points, quiz, classement"],["veille","#ec4899","KX Veille","L'actu IA chaque heure"]];
+const root=document.getElementById("bots");
+B.forEach(([k,c,n,r],i)=>{const d=.9+i*.28;root.insertAdjacentHTML("beforeend",
+`<div class="bot" style="--c:${c};animation:card .7s cubic-bezier(.2,.8,.2,1) ${d}s forwards"><div class="ico"><img src="../assets/bots/${k}.svg" style="animation:logo .9s cubic-bezier(.2,.8,.2,1) ${d+.15}s forwards"></div><div class="name">${n}</div><div class="role">${r}</div><div class="dot"></div></div>`);
+root.lastElementChild.querySelector(".ico").insertAdjacentHTML("beforeend","");
+const s=document.createElement("style");s.textContent=`.bot:nth-child(${i+1}) .ico::after{animation:glow 1.4s ease-out ${d+.2}s forwards}`;document.head.appendChild(s);});
+</script></body></html>

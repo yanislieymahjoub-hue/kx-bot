@@ -2,6 +2,9 @@
 
 export const GUILD_ID = "1558481384601813183";
 
+// Adresse publique du Worker (sert aussi les bannières et logos du dossier public/)
+export const ASSETS_URL = "https://kx-bot.yanis-lieymahjoub.workers.dev";
+
 export const CHANNELS = {
   annonces: "1558493861309841518",
   veille_ia: "1558493905807212574",

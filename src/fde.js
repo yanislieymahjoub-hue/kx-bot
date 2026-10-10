@@ -1,6 +1,6 @@
 // Parcours FDE: candidatures, niveaux, missions, défi hebdo, profil, aide
 import { store } from "./store.js";
-import { guideEmbeds } from "./guide.js";
+import { guideV2 } from "./guide.js";
 
 const MANAGE_ROLES = 0x10000000n;
 
@@ -13,11 +13,12 @@ async function member(h, env, userId) {
   return res.ok ? res.json() : null;
 }
 
+// message privé envoyé par KX Académie
 async function dm(h, env, userId, payload) {
-  const ch = await h.discord(env, "POST", "/users/@me/channels", { recipient_id: userId });
+  const ch = await h.discord(env, "POST", "/users/@me/channels", { recipient_id: userId }, "academie");
   if (!ch.ok) return;
   const { id } = await ch.json();
-  await h.discord(env, "POST", `/channels/${id}/messages`, payload);
+  await h.discord(env, "POST", `/channels/${id}/messages`, payload, "academie");
 }
 
 // Place le membre sur un niveau du parcours (retire les autres niveaux)
@@ -46,7 +47,7 @@ async function announceLevel(h, env, userId, step, by) {
         description: `Félicitations <@${userId}> ! Tu rejoins les FDE certifiés KX et tu as maintenant accès à <#${h.CHANNELS.missions}>.`,
         footer: { text: `Validé par ${by}` }, timestamp: new Date().toISOString(),
       }],
-    });
+    }, "academie");
   }
   const text = {
     apprenti: `Bienvenue dans le parcours FDE KX 🌱 Tu es **Apprenti**. Commence par lire <#${h.CHANNELS.parcours}> et relève le défi de la semaine dans <#${h.CHANNELS.defi}>.`,
@@ -69,7 +70,7 @@ function modalRow(id, label, style, required = true, max = 400, placeholder) {
 export async function handleFde(name, i, env, ctx, h) {
   const user = i.member?.user ?? i.user;
 
-  if (name === "aide") return h.reply({ embeds: guideEmbeds() }, true);
+  if (name === "aide") return h.json({ type: 4, data: guideV2(true) });
 
   if (name === "candidature") {
     return h.json({
@@ -184,8 +185,8 @@ export async function handleFdeComponent(i, env, ctx, h) {
   if (id === "interest") {
     const title = i.message.embeds?.[0]?.title ?? "mission";
     ctx.waitUntil(h.discord(env, "POST", `/channels/${h.CHANNELS.staff}/messages`, {
-      embeds: [{ color: h.AMBRE, title: "✋ Intérêt pour une mission", description: `<@${user.id}> est intéressé par **${title}**\n[Voir la mission](https://discord.com/channels/${h.GUILD_ID}/${i.channel_id}/${i.message.id})`, timestamp: new Date().toISOString() }],
-    }));
+      embeds: [{ color: h.BOTS.missions.color, title: "✋ Intérêt pour une mission", description: `<@${user.id}> est intéressé par **${title}**\n[Voir la mission](https://discord.com/channels/${h.GUILD_ID}/${i.channel_id}/${i.message.id})`, timestamp: new Date().toISOString() }],
+    }, "missions"));
     return h.reply({ content: "C'est noté, l'équipe KX revient vers toi en message privé." }, true);
   }
 
@@ -215,8 +216,8 @@ export async function handleFdeModal(i, env, ctx, h) {
           { type: 2, style: 3, label: "Certifier FDE", emoji: { name: "🏅" }, custom_id: `cand:fde:${user.id}` },
           { type: 2, style: 4, label: "Refuser", custom_id: `cand:refus:${user.id}` },
         ] }],
-      });
-      await announceLevel(h, env, user.id, h.LADDER[0], "KX Bot");
+      }, "academie");
+      await announceLevel(h, env, user.id, h.LADDER[0], "KX Académie");
     })());
     return h.reply({ content: "Candidature envoyée ✅ Tu es maintenant **Apprenti** 🌱 L'équipe va l'étudier, regarde tes messages privés." }, true);
   }
@@ -231,9 +232,9 @@ export async function handleFdeModal(i, env, ctx, h) {
       await h.discord(env, "POST", `/channels/${h.CHANNELS.missions}/messages`, {
         content: fde ? `<@&${fde.id}> nouvelle mission` : undefined,
         allowed_mentions: { roles: fde ? [fde.id] : [] },
-        embeds: [{ color: h.AMBRE, title: f.titre, description: f.besoin, fields, footer: h.FOOTER, timestamp: new Date().toISOString() }],
+        embeds: [{ color: h.BOTS.missions.color, title: f.titre, description: f.besoin, fields, footer: h.FOOTER, timestamp: new Date().toISOString() }],
         components: [{ type: 1, components: [{ type: 2, style: 3, label: "Je suis intéressé", emoji: { name: "✋" }, custom_id: "interest" }] }],
-      });
+      }, "missions");
     })());
     return h.reply({ content: `Mission publiée dans <#${h.CHANNELS.missions}>.` }, true);
   }
@@ -251,13 +252,13 @@ export async function postDefi(env, h) {
   const week = Math.ceil((((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 864e5) + 1) / 7);
   await h.discord(env, "POST", `/channels/${h.CHANNELS.defi}/messages`, {
     embeds: [{
-      color: h.VIOLET, title: `🏋️ Défi de la semaine ${week}`,
+      color: h.BOTS.academie.color, title: `🏋️ Défi de la semaine ${week}`,
       description: `${text}\n\n➡️ Poste ton rendu dans <#${h.CHANNELS.rendus}> et discute-en dans le fil ci-dessous.`,
       footer: h.FOOTER, timestamp: new Date().toISOString(),
     }],
-  }).then(async (res) => {
+  }, "academie").then(async (res) => {
     if (!res.ok) return;
     const msg = await res.json();
-    await h.discord(env, "POST", `/channels/${h.CHANNELS.defi}/messages/${msg.id}/threads`, { name: `Défi semaine ${week} · questions`, auto_archive_duration: 10080 });
+    await h.discord(env, "POST", `/channels/${h.CHANNELS.defi}/messages/${msg.id}/threads`, { name: `Défi semaine ${week} · questions`, auto_archive_duration: 10080 }, "academie");
   });
 }

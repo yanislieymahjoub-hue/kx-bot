@@ -1,4 +1,4 @@
-name: Déployer le KX Bot
+name: Déployer les bots KX
 
 on:
   push:
@@ -22,27 +22,42 @@ jobs:
           [ -n "$CF" ] || { echo "Secret CLOUDFLARE_API_TOKEN manquant"; exit 1; }
           [ -n "$BOT" ] || { echo "Secret DISCORD_BOT_TOKEN manquant"; exit 1; }
 
-      - name: Nettoyer les jetons (espaces, retours à la ligne, préfixe Bearer)
+      - name: Nettoyer les jetons (espaces, retours à la ligne, préfixes)
         env:
           RAW_CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          RAW_BOT: ${{ secrets.DISCORD_BOT_TOKEN }}
+          RAW_DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          RAW_DISCORD_TOKEN_IA: ${{ secrets.DISCORD_TOKEN_IA }}
+          RAW_DISCORD_TOKEN_ACADEMIE: ${{ secrets.DISCORD_TOKEN_ACADEMIE }}
+          RAW_DISCORD_TOKEN_MISSIONS: ${{ secrets.DISCORD_TOKEN_MISSIONS }}
+          RAW_DISCORD_TOKEN_ARENE: ${{ secrets.DISCORD_TOKEN_ARENE }}
+          RAW_DISCORD_TOKEN_VEILLE: ${{ secrets.DISCORD_TOKEN_VEILLE }}
         run: |
           CF=$(printf '%s' "$RAW_CF" | sed 's/^[[:space:]]*Bearer[[:space:]]*//' | tr -d '[:space:]\"')
-          BOT=$(printf '%s' "$RAW_BOT" | sed 's/^[[:space:]]*Bot[[:space:]]*//' | tr -d '[:space:]\"')
-          echo "::add-mask::$CF"; echo "::add-mask::$BOT"
-          echo "Longueur jeton Cloudflare: ${#CF} (attendu ~40)"
-          echo "Longueur jeton Discord: ${#BOT} (attendu ~70)"
-          case "$CF" in *[!A-Za-z0-9_-]*) echo "Le jeton Cloudflare contient des caractères inattendus: ce n'est sans doute pas un jeton API"; exit 1;; esac
+          echo "::add-mask::$CF"
+          case "$CF" in *[!A-Za-z0-9_-]*) echo "Le jeton Cloudflare contient des caractères inattendus"; exit 1;; esac
           echo "CLOUDFLARE_API_TOKEN=$CF" >> "$GITHUB_ENV"
-          echo "DISCORD_BOT_TOKEN=$BOT" >> "$GITHUB_ENV"
+          for NAME in DISCORD_BOT_TOKEN DISCORD_TOKEN_IA DISCORD_TOKEN_ACADEMIE DISCORD_TOKEN_MISSIONS DISCORD_TOKEN_ARENE DISCORD_TOKEN_VEILLE; do
+            RAW_VAR="RAW_$NAME"
+            T=$(printf '%s' "${!RAW_VAR}" | sed 's/^[[:space:]]*Bot[[:space:]]*//' | tr -d '[:space:]\"')
+            if [ -n "$T" ]; then
+              echo "::add-mask::$T"
+              echo "$NAME présent (longueur ${#T})"
+              echo "$NAME=$T" >> "$GITHUB_ENV"
+            else
+              echo "$NAME absent"
+            fi
+          done
 
       - name: Déployer sur Cloudflare
         run: npx --yes wrangler@4 deploy
 
-      - name: Transmettre le jeton du bot au Worker (chiffré)
-        run: printf '%s' "$DISCORD_BOT_TOKEN" | npx --yes wrangler@4 secret put DISCORD_BOT_TOKEN
-
-      - name: Enregistrer les commandes slash
+      - name: Transmettre les jetons des bots au Worker (chiffrés)
         run: |
-          export DISCORD_APP_ID=$(grep '^DISCORD_APP_ID' wrangler.toml | cut -d'"' -f2)
-          node scripts/register-commands.mjs
+          umask 077
+          F="$RUNNER_TEMP/secrets.json"
+          node -e 'const n=["DISCORD_BOT_TOKEN","DISCORD_TOKEN_IA","DISCORD_TOKEN_ACADEMIE","DISCORD_TOKEN_MISSIONS","DISCORD_TOKEN_ARENE","DISCORD_TOKEN_VEILLE"];const o={};for(const k of n)if(process.env[k])o[k]=process.env[k];require("fs").writeFileSync(process.argv[1],JSON.stringify(o))' "$F"
+          npx --yes wrangler@4 secret bulk "$F"
+          rm -f "$F"
+
+      - name: Configurer les bots et leurs commandes
+        run: node scripts/setup-bots.mjs

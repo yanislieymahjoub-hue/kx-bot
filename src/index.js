@@ -3,6 +3,8 @@ import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM
 import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
 import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLeaderboard, buildInPublic } from "./features.js";
 import { runPublish } from "./publish.js";
+import { BOTS, tokenOf, publicKeyOf, botByPath } from "./bots.js";
+import { tourStep, tourLoading, TOUR, V2 } from "./guide.js";
 export { KXStore } from "./store.js";
 
 const API = "https://discord.com/api/v10";
@@ -31,22 +33,26 @@ async function verify(request, body, publicKey) {
   return crypto.subtle.verify("Ed25519", key, hexToBytes(sig), new TextEncoder().encode(ts + body));
 }
 
-async function discord(env, method, path, body) {
-  const res = await fetch(API + path, {
+// Appel à l'API Discord avec le jeton d'un bot de l'équipe (KX Bot par défaut, et en secours si l'autre n'a pas accès)
+async function discord(env, method, path, body, as = "kx") {
+  const call = (token) => fetch(API + path, {
     method,
-    headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, "content-type": "application/json" },
+    headers: { Authorization: `Bot ${token}`, "content-type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
+  const own = as !== "kx" ? tokenOf(env, as) : null;
+  let res = await call(own || env.DISCORD_BOT_TOKEN);
+  if (own && [401, 403, 404].includes(res.status)) res = await call(env.DISCORD_BOT_TOKEN);
   if (!res.ok) console.log("Discord", method, path, res.status, await res.clone().text());
   return res;
 }
 
 async function followUp(env, interaction, data) {
-  // complète une réponse différée (type 5)
-  await fetch(`${API}/webhooks/${env.DISCORD_APP_ID}/${interaction.token}/messages/@original`, {
+  // complète une réponse différée (type 5), au nom du bot qui a reçu la commande
+  await fetch(`${API}/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, {
     method: "PATCH",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...data, allowed_mentions: { parse: [] } }),
+    body: JSON.stringify({ allowed_mentions: { parse: [] }, ...data }),
   });
 }
 
@@ -102,7 +108,7 @@ async function handleCommand(interaction, env, ctx) {
         { role: "user", content: question },
       ]);
       await followUp(env, interaction, {
-        embeds: [{ color: VIOLET, author: { name: `${user.global_name ?? user.username} demande` }, title: question.slice(0, 250), description: answer || "Je n'ai pas réussi à répondre, réessaie dans un instant.", footer: { text: "Réponse générée par l'IA de KX · à vérifier" } }],
+        embeds: [{ color: BOTS.ia.color, author: { name: `${user.global_name ?? user.username} demande` }, title: question.slice(0, 250), description: answer || "Je n'ai pas réussi à répondre, réessaie dans un instant.", footer: { text: "Réponse générée par l'IA de KX · à vérifier" } }],
       });
     })());
     return json({ type: 5 });
@@ -121,7 +127,7 @@ async function handleCommand(interaction, env, ctx) {
             { role: "user", content: transcript },
           ], 500)
         : "Rien à résumer ici pour l'instant.";
-      await followUp(env, interaction, { embeds: [{ color: LILAS, title: `Résumé des ${n} derniers messages`, description: answer || "Rien à résumer pour l'instant.", footer: FOOTER }] });
+      await followUp(env, interaction, { embeds: [{ color: BOTS.ia.color, title: `Résumé des ${n} derniers messages`, description: answer || "Rien à résumer pour l'instant.", footer: FOOTER }] });
     })());
     return json({ type: 5, data: { flags: EPHEMERAL } });
   }
@@ -187,6 +193,14 @@ async function handleCommand(interaction, env, ctx) {
     return json({ type: 5, data: { flags: EPHEMERAL } });
   }
 
+  if (name === "veille") {
+    ctx.waitUntil((async () => {
+      const items = (await latestNews(6)).map((it) => `**[${it.title.slice(0, 120)}](${it.link})**\n*${it.source}*${it.date ? ` · <t:${Math.floor(it.date / 1000)}:R>` : ""}`);
+      await followUp(env, interaction, { embeds: [{ color: BOTS.veille.color, title: "Les dernières actus IA", description: items.join("\n\n") || "Aucune actu récupérée pour l'instant, réessaie plus tard.", footer: { text: "KX Veille · publiée aussi chaque heure dans le salon veille" } }] });
+    })());
+    return json({ type: 5, data: { flags: EPHEMERAL } });
+  }
+
   if (name === "Profil FDE") {
     interaction.data.options = [{ name: "membre", value: interaction.data.target_id }];
     return handleFde("profil", interaction, env, ctx, helpers);
@@ -199,9 +213,42 @@ async function handleCommand(interaction, env, ctx) {
   return reply({ content: "Commande inconnue." }, true);
 }
 
+// ------------------------------------------------------------ visite guidée animée
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const v2only = (d) => ({ ...d, flags: V2 }); // une modification ne peut pas changer le caractère privé
+
+async function editOriginal(interaction, data) {
+  for (let k = 0; k < 3; k++) {
+    const res = await fetch(`${API}/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, {
+      method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(v2only(data)),
+    });
+    if (res.status !== 429) { if (!res.ok) console.log("Visite", res.status, await res.text()); return; }
+    const wait = Number((await res.json().catch(() => ({}))).retry_after ?? 1);
+    await sleep(wait * 1000 + 50);
+  }
+}
+
+async function animateTour(interaction, n, intro) {
+  const total = TOUR[n - 1][3].length;
+  if (intro) {
+    await sleep(450); await editOriginal(interaction, tourLoading(5));
+    await sleep(450); await editOriginal(interaction, tourStep(n, 0));
+  }
+  await sleep(intro ? 550 : 380); await editOriginal(interaction, tourStep(n, 1));
+  if (total > 1) { await sleep(420); await editOriginal(interaction, tourStep(n, total)); }
+}
+
 // ------------------------------------------------------------ boutons et formulaires
 async function handleComponent(interaction, env, ctx) {
   const id = interaction.data.custom_id;
+  if (id.startsWith("tour:")) {
+    const n = Math.min(Math.max(Number(id.slice(5)) || 1, 1), TOUR.length);
+    const inTour = (interaction.message?.flags ?? 0) & EPHEMERAL;
+    ctx.waitUntil(animateTour(interaction, n, !inTour));
+    // depuis #bienvenue: nouveau message privé; dans la visite: on met à jour le même message
+    return inTour ? json({ type: 7, data: v2only(tourStep(n, 0)) }) : json({ type: 4, data: tourLoading(1) });
+  }
+  if (id === "open:candidature") return handleFde("candidature", interaction, env, ctx, helpers);
   if (id.startsWith("role:")) {
     const label = id.slice(5);
     const roles = await (await discord(env, "GET", `/guilds/${GUILD_ID}/roles`)).json();
@@ -260,30 +307,39 @@ function parseFeed(xml) {
   return items;
 }
 
-async function veille(env) {
-  const since = Date.now() - 60 * 60 * 1000; // dernière heure, le cron tourne toutes les heures
-  for (const url of RSS_FEEDS) {
+async function latestNews(n) {
+  const all = [];
+  await Promise.all(RSS_FEEDS.map(async (url) => {
     try {
       const xml = await (await fetch(url, { headers: { "user-agent": "KX-Bot/1.0" } })).text();
-      for (const it of parseFeed(xml).slice(0, 10)) {
-        if (!it.date || it.date.getTime() < since) continue;
-        await discord(env, "POST", `/channels/${CHANNELS.veille_ia}/messages`, {
-          embeds: [{ title: it.title.slice(0, 250), url: it.link, color: VIOLET, footer: { text: new URL(url).hostname } }],
-        });
-      }
+      for (const it of parseFeed(xml).slice(0, 10)) all.push({ ...it, source: new URL(url).hostname.replace(/^www\./, "") });
     } catch (e) {
       console.log("Flux indisponible", url, e.message);
     }
+  }));
+  return all.filter((it) => it.date && !isNaN(it.date)).sort((a, b) => b.date - a.date).slice(0, n);
+}
+
+async function veille(env) {
+  const since = Date.now() - 60 * 60 * 1000; // dernière heure, le cron tourne toutes les heures
+  for (const it of (await latestNews(30)).reverse()) {
+    if (it.date.getTime() < since) continue;
+    await discord(env, "POST", `/channels/${CHANNELS.veille_ia}/messages`, {
+      embeds: [{ title: it.title.slice(0, 250), url: it.link, color: BOTS.veille.color, footer: { text: it.source }, timestamp: it.date.toISOString() }],
+    }, "veille");
   }
 }
 
 // ------------------------------------------------------------ point d'entrée
 export default {
   async fetch(request, env, ctx) {
-    if (request.method === "GET") return new Response("KX Bot en ligne");
+    const bot = botByPath(new URL(request.url).pathname);
+    if (!bot) return new Response("Introuvable", { status: 404 });
+    if (request.method === "GET") return new Response(`${BOTS[bot].name} en ligne`);
     if (request.method !== "POST") return new Response("Méthode non autorisée", { status: 405 });
+    const key = publicKeyOf(env, bot);
     const body = await request.text();
-    if (!(await verify(request, body, env.DISCORD_PUBLIC_KEY))) return new Response("Signature invalide", { status: 401 });
+    if (!key || !(await verify(request, body, key))) return new Response("Signature invalide", { status: 401 });
     const interaction = JSON.parse(body);
     switch (interaction.type) {
       case 1: return json({ type: 1 }); // PING
@@ -301,4 +357,4 @@ export default {
 };
 
 // outils partagés avec fde.js
-const helpers = { json, reply, discord, followUp, opt, isStaff, ask, VIOLET, LILAS, AMBRE, FOOTER, EPHEMERAL, GUILD_ID, CHANNELS, LADDER, MENTOR_ROLE, DEFI_PROMPT, AI_SYSTEM };
+const helpers = { BOTS, json, reply, discord, followUp, opt, isStaff, ask, VIOLET, LILAS, AMBRE, FOOTER, EPHEMERAL, GUILD_ID, CHANNELS, LADDER, MENTOR_ROLE, DEFI_PROMPT, AI_SYSTEM };

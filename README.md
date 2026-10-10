@@ -1,6 +1,19 @@
-# KX Bot
+# Bots KX
 
-Bot Discord du serveur KX Automatisation, hébergé sur Cloudflare Workers (gratuit, 24h/24).
+L'équipe de bots Discord du serveur KX Automatisation, hébergée sur un seul Cloudflare Worker (gratuit, 24h/24).
+
+| Bot | Couleur | Rôle | Adresse des interactions |
+|---|---|---|---|
+| KX Bot | violet | accueil, contact, tickets, réglages | `/` |
+| KX IA | cyan | questions, résumés, relectures, pitchs | `/ia` |
+| KX Académie | or | parcours FDE, défis, ateliers | `/academie` |
+| KX Missions | vert | missions clients des FDE certifiés | `/missions` |
+| KX Arène | rouge | points, quiz, classement, stats | `/arene` |
+| KX Veille | rose | actu IA chaque heure | `/veille` |
+
+Ajouter un bot: le créer sur le portail Discord, l'ajouter dans `src/bots.js` (identifiant, clé publique, commandes, salons), coller son jeton dans le secret GitHub `DISCORD_TOKEN_<CLÉ>`, pousser. Le déploiement règle son logo, sa description, son adresse et ses commandes, et affiche le lien d'invitation. Tant qu'il n'est pas sur le serveur, ses commandes restent sur KX Bot.
+
+Animations: les bannières GIF sont rendues depuis `design/*.html` avec `node design/render.mjs design/hero.html public/banners/bienvenue.gif 10.5 12 800 0` (Chromium + ffmpeg), puis servies par le Worker depuis `public/`.
 
 ## Commandes
 | Commande | Pour qui | Effet |
@@ -30,7 +43,8 @@ Bot Discord du serveur KX Automatisation, hébergé sur Cloudflare Workers (grat
 | `/atelier` | équipe | Événement Discord + annonce avec ping Notif lives |
 | `/stats` | tous | Membres, niveaux FDE, points, quiz |
 | `/kx-setup` | admin | Sujets des salons, tags des forums, salon support, écran d'accueil, accueil guidé |
-| `/kx-publier` | admin | Logo KX sur le bot et le serveur, mode d'emploi dans #bienvenue, salon 📖・commandes, invitations réservées à Fondateur, Équipe KX et Mentor |
+| `/kx-publier` | admin | Logo KX, accueil animé dans #bienvenue, guide des commandes, droits des bots dans leurs salons, invitations réservées à Fondateur, Équipe KX et Mentor |
+| `/veille` | tous | Les dernières actus IA |
 | Clic droit message | tous | Résumer avec l'IA, Expliquer avec l'IA, Remercier l'auteur |
 | Clic droit membre | tous | Profil FDE |
 
@@ -41,9 +55,10 @@ Mémoire (points, quiz, quotas IA): Durable Object SQLite `KXStore`, gratuit.
 ## Secrets (jamais dans le code)
 Dans GitHub → Settings → Secrets and variables → Actions:
 - `CLOUDFLARE_API_TOKEN`: jeton Cloudflare modèle « Modifier Cloudflare Workers »
-- `DISCORD_BOT_TOKEN`: jeton du bot (portail Discord → Bot → Reset Token)
+- `DISCORD_BOT_TOKEN`: jeton de KX Bot (portail Discord → Bot → Reset Token)
+- `DISCORD_TOKEN_IA`, `DISCORD_TOKEN_ACADEMIE`, `DISCORD_TOKEN_MISSIONS`, `DISCORD_TOKEN_ARENE`, `DISCORD_TOKEN_VEILLE`: jetons des autres bots
 
-Chaque push sur `main` redéploie le bot, transmet le jeton au Worker de façon chiffrée et met à jour les commandes.
+Chaque push sur `main` redéploie le Worker, transmet les jetons de façon chiffrée et configure chaque bot (`scripts/setup-bots.mjs`).
 
 ## Réglages
 `src/config.js`: salons, rôles, flux RSS, modèle IA et consignes de l'IA.

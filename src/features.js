@@ -43,7 +43,7 @@ async function thankFlow(env, h, giver, receiver, reason) {
   if (!r.ok) return h.reply({ content: `Tu as déjà remercié ${who(receiver)} aujourd'hui.` }, true);
   return h.json({ type: 4, data: {
     allowed_mentions: { users: [receiver.id] },
-    embeds: [{ color: h.AMBRE, description: `🙏 <@${giver.id}> remercie <@${receiver.id}>${reason ? ` pour **${reason}**` : ""}\n**+10 points** · total ${r.total}`, footer: h.FOOTER }],
+    embeds: [{ color: h.BOTS.arene.color, description: `🙏 <@${giver.id}> remercie <@${receiver.id}>${reason ? ` pour **${reason}**` : ""}\n**+10 points** · total ${r.total}`, footer: h.FOOTER }],
   } });
 }
 
@@ -81,7 +81,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
     const week = h.opt(i, "periode") !== "total";
     const top = await store(env, "top", { n: 10, days: week ? 7 : undefined });
     const lines = top.map((r, k) => `${MEDALS[k] ?? `**${k + 1}.**`} <@${r.user}> · ${r.total} pts`);
-    return h.json({ type: 4, data: { allowed_mentions: { parse: [] }, embeds: [{ color: h.AMBRE, title: week ? "🏆 Classement de la semaine" : "🏆 Classement général", description: lines.join("\n") || "Personne n'a encore de points. Aide quelqu'un, réponds à un /quiz ou fais-toi remercier avec /merci !", footer: { text: "Points: /merci +10 · bonne réponse /quiz +5 · bonus de l'équipe" } }] } });
+    return h.json({ type: 4, data: { allowed_mentions: { parse: [] }, embeds: [{ color: h.BOTS.arene.color, title: week ? "🏆 Classement de la semaine" : "🏆 Classement général", description: lines.join("\n") || "Personne n'a encore de points. Aide quelqu'un, réponds à un /quiz ou fais-toi remercier avec /merci !", footer: { text: "Points: /merci +10 · bonne réponse /quiz +5 · bonus de l'équipe" } }] } });
   }
 
   if (name === "points") {
@@ -109,7 +109,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
       await store(env, "quizSave", { id, answer: Number(q.reponse), explanation: String(q.explication).slice(0, 900) });
       const L = ["A", "B", "C", "D"];
       await h.followUp(env, i, {
-        embeds: [{ color: h.VIOLET, title: "🧠 Quiz FDE", description: `**${q.question}**\n\n${q.choix.map((c, k) => `**${L[k]}.** ${c}`).join("\n")}`, footer: { text: "Une seule réponse par personne · bonne réponse = +5 points" } }],
+        embeds: [{ color: h.BOTS.arene.color, title: "🧠 Quiz FDE", description: `**${q.question}**\n\n${q.choix.map((c, k) => `**${L[k]}.** ${c}`).join("\n")}`, footer: { text: "Une seule réponse par personne · bonne réponse = +5 points" } }],
         components: [{ type: 1, components: L.map((l, k) => ({ type: 2, style: 2, label: l, custom_id: `quiz:${id}:${k}` })) }],
       });
     })());
@@ -132,7 +132,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
         { role: "system", content: "Tu aides des FDE à présenter une automatisation à un client. Français, vouvoiement, ton direct, zéro jargon technique, pas de promesse chiffrée inventée." },
         { role: "user", content: `Automatisation: ${desc}\nInterlocuteur: ${cible}\nÉcris: 1) un pitch oral de 4 phrases centré sur le temps gagné et la tranquillité, 2) un message LinkedIn de 3 lignes, 3) les 3 objections probables avec une réponse courte chacune.` },
       ], 700);
-      await h.followUp(env, i, { embeds: [{ color: h.VIOLET, title: "🎤 Ton pitch client", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · à adapter à ton client" } }] });
+      await h.followUp(env, i, { embeds: [{ color: h.BOTS.ia.color, title: "🎤 Ton pitch client", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · à adapter à ton client" } }] });
     })());
     return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
   }
@@ -146,7 +146,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
         { role: "system", content: explain ? "Tu expliques du code, des workflows ou des notions techniques à un apprenti FDE, en français, simplement, avec un exemple si utile. 12 lignes maximum." : "Tu résumes un message Discord en français en 3 à 5 puces courtes, sans inventer." },
         { role: "user", content: resolvedMsg.content.slice(0, 6000) },
       ], 600);
-      await h.followUp(env, i, { embeds: [{ color: h.LILAS, title: explain ? "💡 Explication" : "📝 Résumé", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: `Message de ${who(resolvedMsg.author)}` } }] });
+      await h.followUp(env, i, { embeds: [{ color: h.BOTS.ia.color, title: explain ? "💡 Explication" : "📝 Résumé", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: `Message de ${who(resolvedMsg.author)}` } }] });
     })());
     return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
   }
@@ -195,8 +195,8 @@ export async function handleFeatures(name, i, env, ctx, h) {
       await h.discord(env, "POST", `/channels/${h.CHANNELS.ateliers}/messages`, {
         content: `${notif ? `<@&${notif.id}> ` : ""}${event ? `https://discord.com/events/${h.GUILD_ID}/${event.id}` : ""}`,
         allowed_mentions: { roles: notif ? [notif.id] : [] },
-        embeds: [{ color: h.VIOLET, title: `🎓 ${titre}`, description: `${desc}\n\n📅 <t:${Math.floor(start / 1000)}:F> (<t:${Math.floor(start / 1000)}:R>)\n🎙️ ${voice ? `<#${voice.id}>` : "sur le serveur"}\n\nClique sur « Intéressé » dans l'événement pour recevoir un rappel.`, footer: h.FOOTER }],
-      });
+        embeds: [{ color: h.BOTS.academie.color, title: `🎓 ${titre}`, description: `${desc}\n\n📅 <t:${Math.floor(start / 1000)}:F> (<t:${Math.floor(start / 1000)}:R>)\n🎙️ ${voice ? `<#${voice.id}>` : "sur le serveur"}\n\nClique sur « Intéressé » dans l'événement pour recevoir un rappel.`, footer: h.FOOTER }],
+      }, "academie");
       await h.followUp(env, i, { content: event ? "Atelier créé et annoncé ✅" : "Annonce publiée, mais l'événement Discord n'a pas pu être créé." });
     })());
     return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
@@ -212,7 +212,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
     ]);
     const count = (n) => { const r = roles.find((x) => x.name === n); return members && r ? members.filter((m) => m.roles.includes(r.id)).length : "?"; };
     return h.reply({ embeds: [{
-      color: h.VIOLET, title: "📊 La communauté KX en chiffres", footer: h.FOOTER,
+      color: h.BOTS.arene.color, title: "📊 La communauté KX en chiffres", footer: h.FOOTER,
       fields: [
         { name: "Membres", value: `${g.approximate_member_count ?? "?"}`, inline: true },
         { name: "En ligne", value: `${g.approximate_presence_count ?? "?"}`, inline: true },
@@ -276,7 +276,7 @@ export async function handleFeaturesModal(i, env, ctx, h) {
       { role: "system", content: "Tu es un FDE senior qui fait une revue bienveillante mais exigeante d'automatisations (n8n, Make, Python, agents IA). Français, tutoiement, concret." },
       { role: "user", content: `Contexte: ${f.contexte}\n\nContenu à relire:\n${f.contenu}\n\nRéponds avec ces sections: **Ce qui est bien** (2 puces), **Risques** (erreurs non gérées, sécurité, données personnelles, coûts, limites d'API), **Améliorations concrètes** (3 à 5 puces actionnables), **Prêt pour un client ?** (oui/non + pourquoi, 1 phrase), **Note** /10.` },
     ], 900);
-    await h.followUp(env, i, { embeds: [{ color: h.VIOLET, title: "🔍 Review IA", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · demande aussi l'avis d'un mentor dans le forum des rendus" } }] });
+    await h.followUp(env, i, { embeds: [{ color: h.BOTS.ia.color, title: "🔍 Review IA", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · demande aussi l'avis d'un mentor dans le forum des rendus" } }] });
   })());
   return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
 }
@@ -287,18 +287,18 @@ export async function weeklyLeaderboard(env, h) {
   if (!top.length) return;
   await h.discord(env, "POST", `/channels/${h.CHANNELS.discussion}/messages`, {
     allowed_mentions: { users: top.map((r) => r.user) },
-    embeds: [{ color: h.AMBRE, title: "🏆 Les contributeurs de la semaine", description: top.map((r, k) => `${MEDALS[k] ?? `**${k + 1}.**`} <@${r.user}> · ${r.total} pts`).join("\n") + "\n\nMerci à vous ! Remerciez ceux qui vous aident avec `/merci` ou clic droit sur un message → Applications → Remercier l'auteur.", footer: h.FOOTER }],
-  });
+    embeds: [{ color: h.BOTS.arene.color, title: "🏆 Les contributeurs de la semaine", description: top.map((r, k) => `${MEDALS[k] ?? `**${k + 1}.**`} <@${r.user}> · ${r.total} pts`).join("\n") + "\n\nMerci à vous ! Remerciez ceux qui vous aident avec `/merci` ou clic droit sur un message → Applications → Remercier l'auteur.", footer: h.FOOTER }],
+  }, "arene");
 }
 
 export async function buildInPublic(env, h) {
   const res = await h.discord(env, "POST", `/channels/${h.CHANNELS.vos_creations}/messages`, {
-    embeds: [{ color: h.LILAS, title: "🚀 Build in public", description: "Qu'est-ce que tu construis cette semaine ? Un workflow, un agent, un script, un client ?\nRaconte-le dans le fil ci-dessous, même en 2 lignes. On s'entraide et on se motive.", footer: h.FOOTER }],
-  });
+    embeds: [{ color: h.BOTS.academie.color, title: "🚀 Build in public", description: "Qu'est-ce que tu construis cette semaine ? Un workflow, un agent, un script, un client ?\nRaconte-le dans le fil ci-dessous, même en 2 lignes. On s'entraide et on se motive.", footer: h.FOOTER }],
+  }, "academie");
   if (!res.ok) return;
   const msg = await res.json();
   const d = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
-  await h.discord(env, "POST", `/channels/${h.CHANNELS.vos_creations}/messages/${msg.id}/threads`, { name: `Build in public · semaine du ${d}`, auto_archive_duration: 10080 });
+  await h.discord(env, "POST", `/channels/${h.CHANNELS.vos_creations}/messages/${msg.id}/threads`, { name: `Build in public · semaine du ${d}`, auto_archive_duration: 10080 }, "academie");
 }
 
 // ------------------------------------------------------------ /kx-setup

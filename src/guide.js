@@ -1,126 +1,183 @@
-// Guide des commandes et présentation d'accueil. Une seule source pour /aide, le salon 📖・commandes et #bienvenue.
-import { CHANNELS } from "./config.js";
+// Accueil, guide des commandes et visite guidée, en composants Discord v2 (conteneurs, images, séparateurs).
+// Une seule source pour #bienvenue, le salon 📖・commandes, /aide et la visite guidée.
+import { CHANNELS, ASSETS_URL } from "./config.js";
+import { BOTS } from "./bots.js";
 
+export const V2 = 1 << 15; // drapeau « composants v2 »
 const SITE = "https://kxautomatisation.fr";
 const RESEAUX = "https://linktr.ee/kxautomatisation";
 const C = CHANNELS;
+const VERSION = "2"; // à changer quand une image est refaite, pour que Discord la recharge
+export const asset = (p) => `${ASSETS_URL}/${p}?v=${VERSION}`;
 
-// [titre, couleur, lignes]
-const SECTIONS = [
-  ["🤖 L'IA de KX", 0x8b5cf6, [
-    "`/ia` Pose une question sur l'automatisation, l'IA ou KX. La réponse s'affiche dans le salon",
-    "`/resume` Résume les derniers messages du salon, pratique pour rattraper une discussion 🔒",
-    "`/review` Colle ton workflow n8n, ton scénario Make ou ton code, l'IA repère les erreurs et propose des améliorations 🔒",
-    "`/pitch` Décris ton automatisation, l'IA en tire un pitch client, un message LinkedIn et des réponses aux objections 🔒",
-    "`/quiz` Une question FDE sur le thème de ton choix, +5 points si tu trouves",
-    "**Clic droit sur un message → Applications** puis Résumer ou Expliquer avec l'IA 🔒",
-    "*30 demandes IA par jour et par membre*",
-  ]],
-  ["🎓 Le parcours FDE", 0xb69cff, [
-    "`/candidature` Entre dans le parcours. Tu passes 🌱 Apprenti et l'équipe étudie ton profil",
-    "`/profil` Ton niveau, ton mentor et tes points, ou ceux d'un autre membre",
-    "**Clic droit sur un membre → Applications → Profil FDE** donne la même fiche",
-    "🌱 Apprenti → 🛠️ En formation → 🏅 FDE Certifié. La certification ouvre l'accès aux missions clients",
-  ]],
-  ["🏆 Points et entraide", 0xf5b83d, [
-    "`/merci` Remercie un membre qui t'a aidé, il gagne 10 points (une fois par jour et par personne)",
-    "**Clic droit sur un message → Applications → Remercier l'auteur** fait pareil",
-    "`/classement` Le top 10 de la semaine ou le classement général",
-    "`/stats` La communauté en chiffres, membres, niveaux FDE et points",
-    "`/suggestion` Propose une idée pour le serveur, la communauté vote pendant 3 jours",
-    "`/ticket` Ouvre un fil privé avec l'équipe KX, aussi possible avec le bouton du salon support",
-  ]],
-  ["💼 Travailler avec KX", 0x8b5cf6, [
-    "`/roi` Calcule le temps et l'argent qu'une automatisation fait gagner en un an",
-    "`/kx` Présente KX Automatisation et sa façon de travailler",
-    "`/contact` Décris ton besoin dans un formulaire, l'équipe KX te recontacte 🔒",
-    "`/rdv` Le lien pour réserver un échange découverte gratuit 🔒",
-    "`/aide` Affiche ce guide, visible par toi seul 🔒",
-  ]],
-  ["🛡️ Équipe et mentors", 0x6b7280, [
-    "`/niveau` Change le niveau FDE d'un membre. Il reçoit un message privé et chaque nouveau certifié est annoncé",
-    "`/points` Donne ou retire des points",
-    "`/mission` Publie une mission client dans le salon des FDE certifiés",
-    "`/defi` Publie un défi d'automatisation tout de suite",
-    "`/atelier` Crée un atelier live, l'événement Discord et l'annonce",
-    "`/annonce` Publie une annonce mise en forme",
-    "`/kx-roles` Poste le panneau des notifications",
-    "`/kx-setup` et `/kx-publier` Réglages du serveur, réservés aux administrateurs",
-  ]],
-  ["⏰ Ce que le bot fait tout seul", 0xb69cff, [
-    `Veille IA publiée chaque heure dans <#${C.veille_ia}>`,
-    `Défi de la semaine chaque lundi à 9h dans <#${C.defi}>`,
-    `Fil « build in public » chaque lundi dans <#${C.vos_creations}>`,
-    `Top des contributeurs chaque dimanche à 18h dans <#${C.discussion}>`,
-  ]],
-];
+const text = (content) => ({ type: 10, content });
+const sep = (spacing = 1, divider = true) => ({ type: 14, divider, spacing });
+const gallery = (url, description) => ({ type: 12, items: [{ media: { url }, ...(description ? { description } : {}) }] });
+const box = (accent_color, components) => ({ type: 17, accent_color, components });
+const row = (...buttons) => ({ type: 1, components: buttons });
+const btn = (label, custom_id, style = 2, emoji) => ({ type: 2, style, label, custom_id, ...(emoji ? { emoji: { name: emoji } } : {}) });
+const link = (label, url, emoji) => ({ type: 2, style: 5, label, url, ...(emoji ? { emoji: { name: emoji } } : {}) });
+const section = (content, thumb) => ({ type: 9, components: [text(content)], accessory: { type: 11, media: { url: thumb } } });
 
-const FOOTER = { text: "KX Automatisation · kxautomatisation.fr" };
-
-// En-tête + une carte par thème (6 cartes, sous la limite de 10 par message)
-export function guideEmbeds() {
-  const head = {
-    color: 0x8b5cf6, title: "📖 Le guide du KX Bot",
-    description: "Le KX Bot est l'assistant du serveur. Tape **/** dans n'importe quel salon, la liste des commandes s'affiche. Choisis-en une et remplis les cases.\n🔒 la réponse n'est visible que par toi.",
+// ------------------------------------------------------------ #bienvenue
+export function welcomeV2(commandesId, selfRoles) {
+  return {
+    flags: V2,
+    components: [box(BOTS.kx.color, [
+      gallery(asset("banners/bienvenue.gif"), "Bienvenue chez KX Automatisation"),
+      text([
+        "KX aide les entreprises à gagner du temps grâce à l'automatisation et à l'IA, de l'artisan au grand groupe.",
+        "",
+        "Ce serveur réunit les **FDE**, les Forward Deployed Engineers. Ils vont sur le terrain, comprennent le métier d'un client et lui livrent des automatisations qui tournent pour de vrai. Débutant ou confirmé, tu as ta place ici.",
+        "-# Yanis, fondateur de KX",
+      ].join("\n")),
+      sep(2),
+      text([
+        "-# 01 · LE PARCOURS",
+        "**Apprenti → En formation → FDE Certifié**",
+        "Tu candidates avec `/candidature`, tu relèves le défi du lundi et un mentor valide ta progression. Une fois certifié, tu accèdes aux missions clients.",
+        "",
+        "-# 02 · LES SALONS",
+        `<#${C.annonces}> les nouvelles · <#${C.parcours}> la certification · <#${C.defi}> le défi du lundi · <#${C.rendus}> tes rendus · <#${C.questions}> l'entraide · <#${C.vos_creations}> tes projets · <#${C.discussion}> tout le reste`,
+        "",
+        "-# 03 · LES BOTS",
+        `Six bots KX t'accompagnent, chacun avec sa couleur. Leurs commandes sont expliquées dans ${commandesId ? `<#${commandesId}>` : "`/aide`"}.`,
+        "",
+        "-# 04 · LES POINTS",
+        "Aider quelqu'un, réussir un quiz ou briller sur un défi rapporte des points. Le classement tombe chaque dimanche à 18h.",
+        "",
+        "-# 05 · L'ÉQUIPE",
+        "`/ticket` ouvre un fil privé avec nous. Pour automatiser ton entreprise, utilise `/contact`.",
+      ].join("\n")),
+      sep(2),
+      text([
+        "### Tes premiers pas",
+        `**1.** Lis le <#${C.reglement}>`,
+        `**2.** Présente-toi dans <#${C.presente_toi}>`,
+        "**3.** Lance la visite guidée ou choisis tes notifications",
+      ].join("\n")),
+      row(btn("Visite guidée", "tour:1", 1, "▶️"), btn("Rejoindre le parcours FDE", "open:candidature", 3)),
+      row(...selfRoles.map(([label, emoji]) => btn(label, `role:${label}`, 2, emoji))),
+      row(link("Site KX", SITE, "🌐"), link("Nos réseaux", RESEAUX, "🔗")),
+    ])],
   };
-  const cards = SECTIONS.map(([title, color, lines], k) => ({ title, color, description: lines.join("\n"), ...(k === SECTIONS.length - 1 ? { footer: FOOTER } : {}) }));
-  return [head, ...cards];
 }
 
-// Texte du message d'accueil de Yanis (posté à son nom, au-dessus du mode d'emploi)
-export const WELCOME_TEXT = [
-  "# 👋 Bienvenue chez KX Automatisation",
-  "Salut et bienvenue ! Ce serveur est la communauté de **KX Automatisation**. On aide les entreprises à gagner du temps grâce à l'automatisation et à l'IA, de l'artisan au grand groupe.",
-  "",
-  "Ici on réunit les **FDE**, les Forward Deployed Engineers. Ce sont ceux qui vont sur le terrain, comprennent le métier d'un client et lui livrent des automatisations qui tournent pour de vrai.",
-  "### Ce que tu trouves ici",
-  "🎓 **Une formation** avec le parcours FDE, un défi chaque semaine et des mentors qui relisent ton travail",
-  "🤝 **De l'entraide** sur n8n, Make, Python, les API et les agents IA",
-  "💼 **Des missions clients** réservées aux FDE certifiés",
-  "🏢 **Un accès direct à l'équipe KX** si tu veux automatiser ton entreprise",
-  "",
-  "Débutant ou confirmé, tu as ta place ici. Le mode d'emploi du serveur est juste en dessous 👇",
-  "",
-  "*Yanis, fondateur de KX*",
-].join("\n");
+// ------------------------------------------------------------ guide des commandes
+const DOCS = {
+  kx: ["Accueil, contact, tickets et réglages", [
+    "`/aide` Ce guide, visible par toi seul 🔒",
+    "`/kx` Présente KX Automatisation",
+    "`/contact` Décris ton besoin, l'équipe KX te recontacte 🔒",
+    "`/rdv` Réserve un échange découverte gratuit 🔒",
+    "`/roi` Calcule le temps et l'argent qu'une automatisation fait gagner en un an",
+    "`/ticket` Ouvre un fil privé avec l'équipe",
+    "`/suggestion` Propose une idée, la communauté vote pendant 3 jours",
+    "-# Équipe · `/annonce` `/kx-roles` `/kx-setup` `/kx-publier`",
+  ]],
+  ia: ["Questions, résumés et relectures", [
+    "`/ia` Pose une question sur l'automatisation, l'IA ou KX",
+    "`/resume` Résume les derniers messages du salon 🔒",
+    "`/review` Colle ton workflow ou ton code, l'IA le relit et propose des améliorations 🔒",
+    "`/pitch` Transforme ton automatisation en pitch client et message LinkedIn 🔒",
+    "**Clic droit sur un message → Applications** puis Résumer ou Expliquer 🔒",
+    "-# 30 demandes par jour et par membre",
+  ]],
+  academie: ["Parcours FDE, défis et ateliers", [
+    "`/candidature` Entre dans le parcours, tu passes Apprenti",
+    "`/profil` Ton niveau, ton mentor et tes points",
+    "**Clic droit sur un membre → Applications → Profil FDE** donne la même fiche",
+    `-# Défi de la semaine chaque lundi à 9h dans <#${C.defi}>, avec un fil « build in public »`,
+    "-# Équipe · `/niveau` `/defi` `/atelier`",
+  ]],
+  missions: ["Contrats pour les FDE certifiés", [
+    `Les missions clients arrivent dans <#${C.missions}>, réservé aux FDE certifiés. Un clic sur « Je suis intéressé » et l'équipe te contacte.`,
+    "-# Équipe · `/mission`",
+  ]],
+  arene: ["Points, quiz et classement", [
+    "`/quiz` Une question FDE sur le thème de ton choix, +5 points si tu trouves",
+    "`/merci` Remercie un membre, il gagne 10 points",
+    "**Clic droit sur un message → Applications → Remercier l'auteur** fait pareil",
+    "`/classement` Le top de la semaine ou le classement général",
+    "`/stats` La communauté en chiffres",
+    "-# Top des contributeurs chaque dimanche à 18h · Équipe · `/points`",
+  ]],
+  veille: ["L'actu IA, chaque heure", [
+    "`/veille` Les six dernières actus IA 🔒",
+    `-# Publication automatique chaque heure dans <#${C.veille_ia}>`,
+  ]],
+};
 
-// Mode d'emploi posté par le bot dans #bienvenue, avec les boutons de notifications
-export function welcomeGuide(commandesId, selfRoles) {
-  const how = {
-    color: 0x8b5cf6, title: "🧭 Comment fonctionne le serveur",
-    fields: [
-      { name: "1 · Le parcours FDE", value: "🌱 Apprenti → 🛠️ En formation → 🏅 FDE Certifié\nTape `/candidature` pour y entrer. Tu relèves les défis, tu postes tes rendus et un mentor valide ta progression. Une fois certifié, tu accèdes aux missions clients et à l'espace des FDE." },
-      { name: "2 · Les salons à connaître", value: [
-        `<#${C.annonces}> les nouvelles de KX`,
-        `<#${C.parcours}> tout sur la certification`,
-        `<#${C.defi}> un défi d'automatisation chaque lundi`,
-        `<#${C.rendus}> tes rendus, commentés par les mentors`,
-        `<#${C.questions}> un post par question, la communauté répond`,
-        `<#${C.vos_creations}> montre ce que tu construis`,
-        `<#${C.veille_ia}> l'actu IA, publiée automatiquement`,
-        `<#${C.discussion}> pour parler de tout`,
-      ].join("\n") },
-      { name: "3 · Le KX Bot", value: `Il répond à tes questions avec l'IA, relit ton code, te teste avec des quiz et compte tes points. Toutes ses commandes sont expliquées dans ${commandesId ? `<#${commandesId}>` : "`/aide`"}.` },
-      { name: "4 · Les points", value: "Aider quelqu'un, réussir un quiz ou briller sur un défi rapporte des points. Remercie un membre avec `/merci`, le classement tombe chaque dimanche à 18h." },
-      { name: "5 · Besoin de l'équipe ?", value: "`/ticket` ouvre un fil privé avec nous. Pour faire automatiser ton entreprise, utilise `/contact` ou `/rdv`." },
+export function guideV2(ephemeral = false) {
+  return {
+    flags: V2 | (ephemeral ? 64 : 0),
+    components: [
+      box(BOTS.kx.color, [
+        gallery(asset("banners/equipe.gif"), "L'équipe des bots KX"),
+        text("## Le guide des commandes\nTape **/** dans n'importe quel salon, choisis une commande et remplis les cases.\n-# 🔒 la réponse n'est visible que par toi"),
+      ]),
+      ...Object.entries(DOCS).map(([k, [role, lines]]) => box(BOTS[k].color, [
+        section(`### ${BOTS[k].name}\n-# ${role}`, asset(`bots/${BOTS[k].logo}.png`)),
+        text(lines.join("\n")),
+      ])),
     ],
   };
-  const steps = {
-    color: 0xf5b83d, title: "✅ Tes premiers pas",
-    description: [
-      `**1.** Lis le <#${C.reglement}>`,
-      `**2.** Présente-toi dans <#${C.presente_toi}>`,
-      "**3.** Choisis tes notifications avec les boutons ci-dessous",
-      "**4.** Lance `/candidature` si tu veux devenir FDE",
-    ].join("\n"),
-    footer: FOOTER,
-  };
-  const components = [
-    { type: 1, components: selfRoles.map(([label, emoji]) => ({ type: 2, style: 2, label, emoji: { name: emoji }, custom_id: `role:${label}` })) },
-    { type: 1, components: [
-      { type: 2, style: 5, label: "Site KX", emoji: { name: "🌐" }, url: SITE },
-      { type: 2, style: 5, label: "Nos réseaux", emoji: { name: "🔗" }, url: RESEAUX },
-    ] },
-  ];
-  return { content: "", embeds: [how, steps], components };
 }
+
+// ------------------------------------------------------------ visite guidée
+// Chaque étape: [couleur, image (logo ou bannière), titre, lignes]
+const TOUR = [
+  [BOTS.kx.color, "bots/bot.png", "Bienvenue chez KX", [
+    "KX aide les entreprises à gagner du temps avec l'automatisation et l'IA.",
+    "Ici, la communauté des FDE apprend, construit et livre de vraies missions.",
+    "La visite dure une minute, clique sur Suivant.",
+  ]],
+  [BOTS.academie.color, "bots/academie.png", "Le parcours FDE", [
+    "**Apprenti** tu découvres et tu relèves le défi du lundi",
+    "**En formation** un mentor suit tes rendus",
+    "**FDE Certifié** tu accèdes aux missions clients",
+    "Tout commence avec `/candidature`.",
+  ]],
+  [BOTS.ia.color, "banners/equipe.gif", "Six bots, chacun son rôle", [
+    "**KX Bot** l'accueil et l'équipe · **KX IA** tes questions",
+    "**KX Académie** le parcours · **KX Missions** les contrats",
+    "**KX Arène** les points · **KX Veille** l'actu IA",
+  ]],
+  [BOTS.arene.color, "bots/arene.png", "Les points", [
+    "Un coup de main remercié avec `/merci` rapporte 10 points.",
+    "Un quiz réussi avec `/quiz` en rapporte 5.",
+    "Le classement tombe chaque dimanche à 18h.",
+  ]],
+  [BOTS.missions.color, "bots/missions.png", "À toi de jouer", [
+    `Présente-toi dans <#${C.presente_toi}>.`,
+    `Pose ta première question dans <#${C.questions}>.`,
+    "Et lance-toi dans le parcours, le bouton est juste en dessous.",
+  ]],
+];
+export const TOUR_LENGTH = TOUR.length;
+
+const dots = (n) => Array.from({ length: TOUR.length }, (_, k) => (k < n ? "◆" : "◇")).join(" ");
+
+// Étape n (1 à 5), avec les `shown` premières lignes visibles (pour l'effet d'apparition)
+export function tourStep(n, shown = Infinity) {
+  const [color, img, title, lines] = TOUR[n - 1];
+  const head = `-# ${dots(n)}   VISITE GUIDÉE · ${n} / ${TOUR.length}\n## ${title}`;
+  const body = lines.slice(0, shown).join("\n");
+  const isBanner = img.startsWith("banners/");
+  const top = isBanner
+    ? [gallery(asset(img)), text(`${head}${body ? `\n${body}` : ""}`)]
+    : [section(`${head}${body ? `\n${body}` : ""}`, asset(img))];
+  const nav = n < TOUR.length
+    ? row(btn("Précédent", `tour:${n - 1}`, 2), btn("Suivant", `tour:${n + 1}`, 1))
+    : row(btn("Précédent", `tour:${n - 1}`, 2), btn("Rejoindre le parcours FDE", "open:candidature", 3), btn("Ouvrir un ticket", "ticket:open", 2));
+  if (n === 1) nav.components[0].disabled = true;
+  return { flags: V2 | 64, components: [box(color, [...top, sep(1), nav])] };
+}
+
+// Écran de chargement de la visite
+export function tourLoading(k) {
+  const bar = "▰".repeat(k) + "▱".repeat(5 - k);
+  return { flags: V2 | 64, components: [box(BOTS.kx.color, [text(`-# PRÉPARATION DE TA VISITE\n### ${bar}`)])] };
+}
+
+export { TOUR };

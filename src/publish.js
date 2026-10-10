@@ -1,6 +1,7 @@
 // /kx-publier: logo du bot et du serveur, mode d'emploi dans #bienvenue, salon 📖・commandes, invitations réservées
 import { LOGO_DATA_URI } from "./logo.js";
-import { guideEmbeds, welcomeGuide } from "./guide.js";
+import { guideV2, welcomeV2 } from "./guide.js";
+import { BOTS, BOT_PERMISSIONS } from "./bots.js";
 import { SELF_ROLES } from "./config.js";
 import { store } from "./store.js";
 
@@ -16,6 +17,18 @@ export async function runPublish(env, h) {
   const ok = async (res) => { if (res.ok) return res; throw new Error(`${res.status} ${(await res.text()).slice(0, 160)}`); };
   const get = async (path) => (await ok(await h.discord(env, "GET", path))).json();
   const C = h.CHANNELS, G = h.GUILD_ID, botId = env.DISCORD_APP_ID;
+  // Remplace la publication du bot dans un salon: modification sur place si possible, sinon nouvelle publication et retrait de l'ancienne
+  const upsert = async (channelId, payload, pick) => {
+    const msgs = await get(`/channels/${channelId}/messages?limit=50`);
+    const old = msgs.filter((m) => m.author.id === botId && pick(m));
+    if (old[0]) {
+      const res = await h.discord(env, "PATCH", `/channels/${channelId}/messages/${old[0].id}`, payload);
+      if (res.ok) return "mis à jour";
+    }
+    await ok(await h.discord(env, "POST", `/channels/${channelId}/messages`, payload));
+    for (const m of old) await h.discord(env, "DELETE", `/channels/${channelId}/messages/${m.id}`);
+    return old.length ? "nouvelle version publiée" : "publié";
+  };
 
   // ---------- logo (appliqué une seule fois par version du fichier, Discord limite les changements d'avatar)
   const logoHash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(LOGO_DATA_URI)))].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -65,12 +78,8 @@ export async function runPublish(env, h) {
     const base = Math.min(...siblings.map((c) => c.position));
     await ok(await h.discord(env, "PATCH", `/guilds/${G}/channels`, order.map((id, k) => ({ id, position: base + k }))));
 
-    // une seule publication, modifiée en place aux lancements suivants
-    const mine = (await get(`/channels/${guide.id}/messages?limit=20`)).filter((m) => m.author.id === botId).reverse();
-    const payload = { embeds: guideEmbeds() };
-    if (mine[0]) await ok(await h.discord(env, "PATCH", `/channels/${guide.id}/messages/${mine[0].id}`, payload));
-    else await ok(await h.discord(env, "POST", `/channels/${guide.id}/messages`, payload));
-    return `${created ? "créé" : "déjà présent"}, guide ${mine[0] ? "mis à jour" : "publié"}`;
+    const r = await upsert(guide.id, guideV2(), () => true);
+    return `${created ? "créé" : "déjà présent"}, guide ${r}`;
   });
 
   // ---------- le salon des commandes visible dès l'arrivée
@@ -94,17 +103,21 @@ export async function runPublish(env, h) {
     return "salon des commandes ajouté";
   });
 
-  // ---------- mode d'emploi dans #bienvenue (remplace l'ancien panneau de notifications)
-  await step("Mode d'emploi dans #bienvenue", async () => {
-    const payload = welcomeGuide(guide?.id, SELF_ROLES);
-    const msgs = await get(`/channels/${C.bienvenue}/messages?limit=50`);
-    const panel = msgs.find((m) => m.author.id === botId && JSON.stringify(m.components ?? []).includes('"role:'));
-    if (panel) {
-      const res = await h.discord(env, "PATCH", `/channels/${C.bienvenue}/messages/${panel.id}`, payload);
-      if (res.ok) return "ancien panneau remplacé";
+  // ---------- accueil dans #bienvenue (bannière animée, présentation, boutons)
+  await step("Accueil dans #bienvenue", async () => upsert(C.bienvenue, welcomeV2(guide?.id, SELF_ROLES), (m) => JSON.stringify(m.components ?? []).includes('"role:')));
+
+  // ---------- chaque bot peut publier dans ses salons, même verrouillés ou privés
+  await step("Salons des bots", async () => {
+    const roles = await get(`/guilds/${G}/roles`);
+    const done = [], absent = [];
+    for (const [k, b] of Object.entries(BOTS)) {
+      if (k === "kx" || !b.channels?.length) continue;
+      const role = roles.find((r) => r.tags?.bot_id === b.id);
+      if (!role) { absent.push(b.name); continue; }
+      for (const key of b.channels) if (C[key]) await ok(await h.discord(env, "PUT", `/channels/${C[key]}/permissions/${role.id}`, { type: 0, allow: String(BOT_PERMISSIONS), deny: "0" }));
+      done.push(b.name);
     }
-    await ok(await h.discord(env, "POST", `/channels/${C.bienvenue}/messages`, payload));
-    return panel ? "nouveau message, l'ancien panneau peut être supprimé" : "publié";
+    return [done.length ? `réglés pour ${done.join(", ")}` : "", absent.length ? `pas encore sur le serveur ${absent.join(", ")}` : ""].filter(Boolean).join(", ");
   });
 
   // ---------- invitations réservées à l'équipe et aux mentors
