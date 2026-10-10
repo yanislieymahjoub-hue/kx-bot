@@ -2,6 +2,7 @@
 const { DISCORD_BOT_TOKEN, DISCORD_APP_ID } = process.env;
 const GUILD_ID = "1558481384601813183";
 const MANAGE_MESSAGES = String(0x2000);
+const MANAGE_ROLES = String(0x10000000);
 
 const commands = [
   { name: "kx", description: "Présentation de KX Automatisation" },
@@ -28,6 +29,26 @@ const commands = [
     ],
   },
   { name: "kx-roles", description: "(Équipe) Poster le panneau de rôles", default_member_permissions: MANAGE_MESSAGES },
+  { name: "aide", description: "Toutes les commandes du KX Bot" },
+  { name: "candidature", description: "Rejoindre le parcours FDE (formation et certification)" },
+  {
+    name: "profil", description: "Voir le niveau FDE d'un membre",
+    options: [{ type: 6, name: "membre", description: "Membre (toi par défaut)", required: false }],
+  },
+  {
+    name: "niveau", description: "(Équipe) Changer le niveau FDE d'un membre", default_member_permissions: MANAGE_ROLES,
+    options: [
+      { type: 6, name: "membre", description: "Membre", required: true },
+      { type: 3, name: "niveau", description: "Nouveau niveau", required: true, choices: [
+        { name: "🌱 Apprenti", value: "apprenti" },
+        { name: "🛠️ En formation", value: "formation" },
+        { name: "🏅 FDE Certifié", value: "fde" },
+        { name: "🎓 Mentor (en plus)", value: "mentor" },
+      ] },
+    ],
+  },
+  { name: "mission", description: "(Équipe) Publier une mission client pour les FDE", default_member_permissions: MANAGE_ROLES },
+  { name: "defi", description: "(Équipe) Publier un défi d'automatisation maintenant", default_member_permissions: MANAGE_MESSAGES },
 ];
 
 const res = await fetch(`https://discord.com/api/v10/applications/${DISCORD_APP_ID}/guilds/${GUILD_ID}/commands`, {

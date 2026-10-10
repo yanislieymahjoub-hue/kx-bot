@@ -1,5 +1,6 @@
 // KX Bot, version Cloudflare Worker (interactions HTTP Discord + IA Workers AI)
-import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM } from "./config.js";
+import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM, LADDER, MENTOR_ROLE, DEFI_PROMPT } from "./config.js";
+import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
 
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
@@ -168,11 +169,14 @@ async function handleCommand(interaction, env, ctx) {
     });
   }
 
+  const fde = await handleFde(name, interaction, env, ctx, helpers);
+  if (fde) return fde;
+
   return reply({ content: "Commande inconnue." }, true);
 }
 
 // ------------------------------------------------------------ boutons et formulaires
-async function handleComponent(interaction, env) {
+async function handleComponent(interaction, env, ctx) {
   const id = interaction.data.custom_id;
   if (id.startsWith("role:")) {
     const label = id.slice(5);
@@ -185,11 +189,16 @@ async function handleComponent(interaction, env) {
     if (!res.ok) return reply({ content: "Je n'ai pas pu changer ton rôle. Le rôle du bot doit être placé au-dessus." }, true);
     return reply({ content: has ? `Rôle **${label}** retiré.` : `Rôle **${label}** ajouté.` }, true);
   }
+  const fde = await handleFdeComponent(interaction, env, ctx, helpers);
+  if (fde) return fde;
   return reply({ content: "Action inconnue." }, true);
 }
 
 async function handleModal(interaction, env, ctx) {
-  if (interaction.data.custom_id !== "contact-modal") return reply({ content: "Formulaire inconnu." }, true);
+  if (interaction.data.custom_id !== "contact-modal") {
+    const fde = await handleFdeModal(interaction, env, ctx, helpers);
+    return fde ?? reply({ content: "Formulaire inconnu." }, true);
+  }
   const f = {};
   for (const row of interaction.data.components) for (const c of row.components) f[c.custom_id] = c.value;
   const user = interaction.member?.user ?? interaction.user;
@@ -251,12 +260,16 @@ export default {
     switch (interaction.type) {
       case 1: return json({ type: 1 }); // PING
       case 2: return handleCommand(interaction, env, ctx);
-      case 3: return handleComponent(interaction, env);
+      case 3: return handleComponent(interaction, env, ctx);
       case 5: return handleModal(interaction, env, ctx);
       default: return reply({ content: "Interaction non gérée." }, true);
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(veille(env));
+    if (event.cron === "0 7 * * 1") ctx.waitUntil(postDefi(env, helpers));
+    else ctx.waitUntil(veille(env));
   },
 };
+
+// outils partagés avec fde.js
+const helpers = { json, reply, discord, followUp, opt, isStaff, ask, VIOLET, LILAS, AMBRE, FOOTER, EPHEMERAL, GUILD_ID, CHANNELS, LADDER, MENTOR_ROLE, DEFI_PROMPT, AI_SYSTEM };

@@ -13,8 +13,14 @@ Bot Discord du serveur KX Automatisation, hébergé sur Cloudflare Workers (grat
 | `/suggestion idee` | tous | Sondage Pour/Contre dans #suggestions |
 | `/annonce` | équipe | Annonce mise en forme dans #annonces |
 | `/kx-roles` | équipe | Panneau de boutons Notif lives / Notif annonces |
+| `/aide` | tous | Liste des commandes |
+| `/candidature` | tous | Candidature au parcours FDE, passe Apprenti, arrive dans #staff avec boutons Valider / Certifier / Refuser |
+| `/profil` | tous | Niveau FDE d'un membre |
+| `/niveau` | équipe | Apprenti, En formation, FDE Certifié ou Mentor (MP + annonce dans #certifications) |
+| `/mission` | équipe | Publie une mission dans #missions (privé FDE) avec bouton « Je suis intéressé » |
+| `/defi` | équipe | Défi d'automatisation généré par l'IA dans #défi-de-la-semaine |
 
-Tâche automatique: veille IA publiée toutes les heures dans #veille-ia.
+Tâches automatiques: veille IA toutes les heures dans #veille-ia, défi IA chaque lundi à 9h dans #défi-de-la-semaine.
 
 ## Secrets (jamais dans le code)
 Dans GitHub → Settings → Secrets and variables → Actions:
