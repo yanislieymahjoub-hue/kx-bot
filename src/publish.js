@@ -2,6 +2,7 @@
 import { LOGO_DATA_URI } from "./logo.js";
 import { guideV2, welcomeV2 } from "./guide.js";
 import { BOTS, BOT_PERMISSIONS } from "./bots.js";
+import { ensureRoles } from "./roles.js";
 import { SELF_ROLES } from "./config.js";
 import { store } from "./store.js";
 
@@ -56,10 +57,23 @@ export async function runPublish(env, h) {
     });
     if (out.slice(before).every((l) => l.startsWith("✅"))) await store(env, "setting", { key: "logo", value: logoHash }).catch(() => {});
   }
-  await step("Salon du règlement", async () => { await ok(await h.discord(env, "PATCH", `/guilds/${G}`, { rules_channel_id: C.reglement })); });
-
   let chans = await get(`/guilds/${G}/channels`);
   const guild = await get(`/guilds/${G}`);
+  // Discord ne laisse pas un bot changer le salon des règles, on le signale seulement
+  if (guild.rules_channel_id !== C.reglement) out.push("⚠️ Salon des règles · à régler dans Paramètres du serveur, Communauté, Vue d'ensemble");
+
+  // ---------- rôles (équipe, badges, communauté)
+  await step("Rôles", async () => ensureRoles(env, h, botId));
+  await step("Badge Pionnier pour les premiers membres", async () => {
+    if ((await store(env, "setting", { key: "pionniers" }).catch(() => ({}))).value) return "déjà donné";
+    const role = (await get(`/guilds/${G}/roles`)).find((r) => r.name === "Pionnier");
+    if (!role) return false;
+    const members = await get(`/guilds/${G}/members?limit=1000`);
+    let n = 0;
+    for (const m of members) if (!m.user.bot && !m.roles.includes(role.id) && (await h.discord(env, "PUT", `/guilds/${G}/members/${m.user.id}/roles/${role.id}`)).ok) n++;
+    await store(env, "setting", { key: "pionniers", value: "1" }).catch(() => {});
+    return `${n} membre${n > 1 ? "s" : ""}`;
+  });
 
   // ---------- salon 📖・commandes, en lecture seule, juste après le règlement
   let guide = chans.find((c) => c.name === GUIDE_NAME);

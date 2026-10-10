@@ -18,7 +18,7 @@ export const BOTS = {
     name: "KX Académie", path: "/academie", color: 0xf5b83d, logo: "academie",
     id: "1558564596288200945", publicKey: "ce0b67f07b6f6cf4f24d500d96368cbb20d0e73b0127e26ccd88e2a9c3fb4433",
     about: "Le parcours FDE de KX. Candidatures, niveaux, défis de la semaine et ateliers.",
-    commands: ["candidature", "profil", "niveau", "defi", "atelier", "Profil FDE"],
+    commands: ["candidature", "profil", "niveau", "badge", "defi", "atelier", "Profil FDE"],
     channels: ["defi", "certifications", "ateliers", "vos_creations", "staff", "rendus", "parcours"],
   },
   missions: {

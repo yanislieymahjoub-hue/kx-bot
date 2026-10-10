@@ -47,6 +47,16 @@ export const COMMANDS = [
   },
   { name: "mission", description: "(Équipe) Publier une mission client pour les FDE", default_member_permissions: MANAGE_ROLES },
   { name: "defi", description: "(Équipe) Publier un défi d'automatisation maintenant", default_member_permissions: MANAGE_MESSAGES },
+  {
+    name: "badge", description: "(Équipe) Donner ou retirer un badge (Expert Cyber, Expert Réseau...)", default_member_permissions: MANAGE_ROLES,
+    options: [
+      { type: 6, name: "membre", description: "Membre", required: true },
+      { type: 3, name: "badge", description: "Badge", required: true, choices: [
+        "Expert Cyber", "Expert Réseau", "Expert IA", "Expert No-code", "Expert Dev", "Expert Data", "Champion du défi", "Bêta-testeur", "Pionnier",
+      ].map((n) => ({ name: n, value: n })) },
+      { type: 5, name: "retirer", description: "Retirer le badge au lieu de le donner", required: false },
+    ],
+  },
 
   // Lot 2
   {

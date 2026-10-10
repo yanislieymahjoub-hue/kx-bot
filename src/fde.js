@@ -1,6 +1,7 @@
 // Parcours FDE: candidatures, niveaux, missions, défi hebdo, profil, aide
 import { store } from "./store.js";
 import { guideV2 } from "./guide.js";
+import { BADGES, BADGE_EMOJI } from "./roles.js";
 
 const MANAGE_ROLES = 0x10000000n;
 
@@ -132,6 +133,23 @@ export async function handleFde(name, i, env, ctx, h) {
       if (step) await announceLevel(h, env, targetId, step, user.global_name ?? user.username);
     })());
     return h.reply({ content: `C'est fait, <@${targetId}> passe au niveau **${key}**.` }, true);
+  }
+
+  if (name === "badge") {
+    if (!canManage(i)) return h.reply({ content: "Commande réservée à l'équipe." }, true);
+    const targetId = h.opt(i, "membre"), badge = h.opt(i, "badge"), remove = h.opt(i, "retirer") === true;
+    if (!BADGES.includes(badge)) return h.reply({ content: "Badge inconnu." }, true);
+    const role = (await guildRoles(h, env)).find((r) => r.name === badge);
+    if (!role) return h.reply({ content: `Le rôle ${badge} n'existe pas encore, lance /kx-publier.` }, true);
+    ctx.waitUntil((async () => {
+      const res = await h.discord(env, remove ? "DELETE" : "PUT", `/guilds/${h.GUILD_ID}/members/${targetId}/roles/${role.id}`);
+      if (!res.ok || remove) return;
+      await h.discord(env, "POST", `/channels/${h.CHANNELS.certifications}/messages`, {
+        content: `<@${targetId}>`, allowed_mentions: { users: [targetId] },
+        embeds: [{ color: role.color || h.BOTS.academie.color, description: `${BADGE_EMOJI[badge] ?? "🎖️"} <@${targetId}> reçoit le badge **${badge}**`, footer: { text: `Attribué par ${user.global_name ?? user.username}` }, timestamp: new Date().toISOString() }],
+      }, "academie");
+    })());
+    return h.reply({ content: remove ? `Badge **${badge}** retiré à <@${targetId}>.` : `Badge **${badge}** donné à <@${targetId}>, annoncé dans <#${h.CHANNELS.certifications}>.` }, true);
   }
 
   if (name === "mission") {

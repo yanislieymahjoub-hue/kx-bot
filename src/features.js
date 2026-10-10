@@ -1,6 +1,7 @@
 // Lot 2: points, quiz, review IA, pitch, ROI, tickets, ateliers, stats, menus clic droit, /kx-setup
 import { store } from "./store.js";
 import { TOPICS, AI_DAILY_LIMIT } from "./config.js";
+import { weeklyTopRole, TOP_ROLE } from "./roles.js";
 
 const SEND = 2048n, PUB_THREADS = 34359738368n, PRIV_THREADS = 68719476736n;
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -284,10 +285,11 @@ export async function handleFeaturesModal(i, env, ctx, h) {
 // ------------------------------------------------------------ crons hebdo
 export async function weeklyLeaderboard(env, h) {
   const top = await store(env, "top", { n: 5, days: 7 });
+  await weeklyTopRole(env, h, top[0]?.user);
   if (!top.length) return;
   await h.discord(env, "POST", `/channels/${h.CHANNELS.discussion}/messages`, {
     allowed_mentions: { users: top.map((r) => r.user) },
-    embeds: [{ color: h.BOTS.arene.color, title: "🏆 Les contributeurs de la semaine", description: top.map((r, k) => `${MEDALS[k] ?? `**${k + 1}.**`} <@${r.user}> · ${r.total} pts`).join("\n") + "\n\nMerci à vous ! Remerciez ceux qui vous aident avec `/merci` ou clic droit sur un message → Applications → Remercier l'auteur.", footer: h.FOOTER }],
+    embeds: [{ color: h.BOTS.arene.color, title: "🏆 Les contributeurs de la semaine", description: top.map((r, k) => `${MEDALS[k] ?? `**${k + 1}.**`} <@${r.user}> · ${r.total} pts`).join("\n") + `\n\n<@${top[0].user}> porte le rôle **${TOP_ROLE}** jusqu'à dimanche prochain.` + "\n\nMerci à vous ! Remerciez ceux qui vous aident avec `/merci` ou clic droit sur un message → Applications → Remercier l'auteur.", footer: h.FOOTER }],
   }, "arene");
 }
 

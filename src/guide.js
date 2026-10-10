@@ -87,8 +87,9 @@ const DOCS = {
     "`/candidature` Entre dans le parcours, tu passes Apprenti",
     "`/profil` Ton niveau, ton mentor et tes points",
     "**Clic droit sur un membre → Applications → Profil FDE** donne la même fiche",
+    "**Badges Expert** Cyber, Réseau, IA, No-code, Dev et Data, donnés par l'équipe à ceux qui ont fait leurs preuves",
     `-# Défi de la semaine chaque lundi à 9h dans <#${C.defi}>, avec un fil « build in public »`,
-    "-# Équipe · `/niveau` `/defi` `/atelier`",
+    "-# Équipe · `/niveau` `/badge` `/defi` `/atelier`",
   ]],
   missions: ["Contrats pour les FDE certifiés", [
     `Les missions clients arrivent dans <#${C.missions}>, réservé aux FDE certifiés. Un clic sur « Je suis intéressé » et l'équipe te contacte.`,
@@ -100,7 +101,8 @@ const DOCS = {
     "**Clic droit sur un message → Applications → Remercier l'auteur** fait pareil",
     "`/classement` Le top de la semaine ou le classement général",
     "`/stats` La communauté en chiffres",
-    "-# Top des contributeurs chaque dimanche à 18h · Équipe · `/points`",
+    "Chaque dimanche à 18h, le premier du classement porte le rôle **Top de la semaine** pendant 7 jours",
+    "-# Équipe · `/points`",
   ]],
   veille: ["L'actu IA, chaque heure", [
     "`/veille` Les six dernières actus IA 🔒",
