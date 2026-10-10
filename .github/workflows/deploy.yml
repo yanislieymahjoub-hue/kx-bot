@@ -22,20 +22,27 @@ jobs:
           [ -n "$CF" ] || { echo "Secret CLOUDFLARE_API_TOKEN manquant"; exit 1; }
           [ -n "$BOT" ] || { echo "Secret DISCORD_BOT_TOKEN manquant"; exit 1; }
 
-      - name: Déployer sur Cloudflare
+      - name: Nettoyer les jetons (espaces, retours à la ligne, préfixe Bearer)
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RAW_CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RAW_BOT: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          CF=$(printf '%s' "$RAW_CF" | sed 's/^[[:space:]]*Bearer[[:space:]]*//' | tr -d '[:space:]\"')
+          BOT=$(printf '%s' "$RAW_BOT" | sed 's/^[[:space:]]*Bot[[:space:]]*//' | tr -d '[:space:]\"')
+          echo "::add-mask::$CF"; echo "::add-mask::$BOT"
+          echo "Longueur jeton Cloudflare: ${#CF} (attendu ~40)"
+          echo "Longueur jeton Discord: ${#BOT} (attendu ~70)"
+          case "$CF" in *[!A-Za-z0-9_-]*) echo "Le jeton Cloudflare contient des caractères inattendus: ce n'est sans doute pas un jeton API"; exit 1;; esac
+          echo "CLOUDFLARE_API_TOKEN=$CF" >> "$GITHUB_ENV"
+          echo "DISCORD_BOT_TOKEN=$BOT" >> "$GITHUB_ENV"
+
+      - name: Déployer sur Cloudflare
         run: npx --yes wrangler@4 deploy
 
       - name: Transmettre le jeton du bot au Worker (chiffré)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
         run: printf '%s' "$DISCORD_BOT_TOKEN" | npx --yes wrangler@4 secret put DISCORD_BOT_TOKEN
 
       - name: Enregistrer les commandes slash
-        env:
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
         run: |
           export DISCORD_APP_ID=$(grep '^DISCORD_APP_ID' wrangler.toml | cut -d'"' -f2)
           node scripts/register-commands.mjs
