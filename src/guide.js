@@ -7,7 +7,7 @@ export const V2 = 1 << 15; // drapeau « composants v2 »
 const SITE = "https://kxautomatisation.fr";
 const RESEAUX = "https://linktr.ee/kxautomatisation";
 const C = CHANNELS;
-const VERSION = "2"; // à changer quand une image est refaite, pour que Discord la recharge
+const VERSION = "3"; // à changer quand une image est refaite, pour que Discord la recharge
 export const asset = (p) => `${ASSETS_URL}/${p}?v=${VERSION}`;
 
 const text = (content) => ({ type: 10, content });
