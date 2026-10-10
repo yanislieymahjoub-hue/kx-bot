@@ -10,8 +10,8 @@ crons = ["0 * * * *"]
 
 [vars]
 # Identifiants publics de l'application Discord (pas secrets)
-DISCORD_APP_ID = "A_REMPLIR"
-DISCORD_PUBLIC_KEY = "A_REMPLIR"
+DISCORD_APP_ID = "1558510006364545074"
+DISCORD_PUBLIC_KEY = "7930d69307ad72e8b0bf3bf95d44fc6a65b534a94ccbecf84a8f258eacff2175"
 # Adresse de la CT qui reçoit les demandes /contact (vide = désactivé)
 CT_WEBHOOK_URL = ""
 
