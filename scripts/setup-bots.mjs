@@ -5,6 +5,8 @@ import fs from "node:fs";
 import { BOTS, BOT_PERMISSIONS } from "../src/bots.js";
 import { GUILD_ID, ASSETS_URL } from "../src/config.js";
 import { COMMANDS } from "./commands.mjs";
+import { ensureRoles } from "../src/roles.js";
+import { CHANNELS } from "../src/config.js";
 
 const API = "https://discord.com/api/v10";
 const tokenOf = (k) => (k === "kx" ? process.env.DISCORD_BOT_TOKEN : process.env[`DISCORD_TOKEN_${k.toUpperCase()}`]);
@@ -65,4 +67,21 @@ for (const [k, r] of Object.entries(ready)) {
   console.log(`${res.ok ? "✓" : "✗"} ${BOTS[k].name}: ${list.length} commandes${res.ok ? "" : ` (${res.status} ${JSON.stringify(res.data).slice(0, 300)})`}`);
   if (!res.ok) failed = true;
 }
+// rôles du serveur et droits de chaque bot dans ses salons (avec le jeton de KX Bot)
+const kx = ready.kx;
+const h = {
+  GUILD_ID,
+  discord: (_env, method, path, body) => fetch(API + path, { method, headers: { Authorization: `Bot ${kx.token}`, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }),
+};
+try { console.log("✓ Rôles:", await ensureRoles({}, h, kx.id)); } catch (e) { console.log("✗ Rôles:", e.message); }
+const roles = (await call(kx.token, "GET", `/guilds/${GUILD_ID}/roles`)).data;
+for (const [k, b] of Object.entries(BOTS)) {
+  if (k === "kx" || !b.channels?.length || !ready[k]) continue;
+  const role = roles.find((r) => r.tags?.bot_id === b.id);
+  if (!role) continue;
+  let n = 0;
+  for (const key of b.channels) if (CHANNELS[key] && (await call(kx.token, "PUT", `/channels/${CHANNELS[key]}/permissions/${role.id}`, { type: 0, allow: String(BOT_PERMISSIONS), deny: "0" })).ok) n++;
+  console.log(`✓ ${b.name}: droits dans ${n} salon${n > 1 ? "s" : ""}`);
+}
+
 if (failed) process.exit(1);
