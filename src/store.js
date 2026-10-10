@@ -1,0 +1,86 @@
+// Mémoire du bot: Durable Object SQLite (gratuit sur Cloudflare)
+// Points, remerciements, quiz, quota IA.
+
+export class KXStore {
+  constructor(state) {
+    this.sql = state.storage.sql;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS points (user TEXT PRIMARY KEY, total INTEGER NOT NULL DEFAULT 0)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS log (user TEXT, pts INTEGER, reason TEXT, ts INTEGER)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS thanks (giver TEXT, receiver TEXT, day TEXT, PRIMARY KEY (giver, receiver, day))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS quiz (id TEXT PRIMARY KEY, answer INTEGER, explanation TEXT, ts INTEGER)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS quiz_try (id TEXT, user TEXT, PRIMARY KEY (id, user))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS ai_usage (user TEXT, day TEXT, n INTEGER, PRIMARY KEY (user, day))`);
+  }
+
+  rows(q, ...b) { return this.sql.exec(q, ...b).toArray(); }
+
+  total(user) { return this.rows(`SELECT total FROM points WHERE user = ?`, user)[0]?.total ?? 0; }
+
+  add({ user, pts, reason }) {
+    this.sql.exec(`INSERT INTO points (user, total) VALUES (?, ?) ON CONFLICT(user) DO UPDATE SET total = total + excluded.total`, user, pts);
+    this.sql.exec(`INSERT INTO log (user, pts, reason, ts) VALUES (?, ?, ?, ?)`, user, pts, reason ?? "", Date.now());
+    return { total: this.total(user) };
+  }
+
+  profile({ user }) {
+    const total = this.total(user);
+    const rank = this.rows(`SELECT COUNT(*) AS n FROM points WHERE total > ?`, total)[0].n + 1;
+    const week = this.rows(`SELECT COALESCE(SUM(pts), 0) AS s FROM log WHERE user = ? AND ts > ?`, user, Date.now() - 7 * 864e5)[0].s;
+    return { total, rank, week };
+  }
+
+  top({ n = 10, days }) {
+    if (days) return this.rows(`SELECT user, SUM(pts) AS total FROM log WHERE ts > ? GROUP BY user HAVING total > 0 ORDER BY total DESC LIMIT ?`, Date.now() - days * 864e5, n);
+    return this.rows(`SELECT user, total FROM points WHERE total > 0 ORDER BY total DESC LIMIT ?`, n);
+  }
+
+  thank({ giver, receiver, day }) {
+    if (this.rows(`SELECT 1 FROM thanks WHERE giver = ? AND receiver = ? AND day = ?`, giver, receiver, day).length) return { ok: false };
+    this.sql.exec(`INSERT INTO thanks (giver, receiver, day) VALUES (?, ?, ?)`, giver, receiver, day);
+    return { ok: true, ...this.add({ user: receiver, pts: 10, reason: `merci de ${giver}` }) };
+  }
+
+  quizSave({ id, answer, explanation }) {
+    this.sql.exec(`INSERT OR REPLACE INTO quiz (id, answer, explanation, ts) VALUES (?, ?, ?, ?)`, id, answer, explanation, Date.now());
+    return { ok: true };
+  }
+
+  quizTry({ id, user, choice }) {
+    const q = this.rows(`SELECT answer, explanation FROM quiz WHERE id = ?`, id)[0];
+    if (!q) return { missing: true };
+    if (this.rows(`SELECT 1 FROM quiz_try WHERE id = ? AND user = ?`, id, user).length) return { already: true, ...q };
+    this.sql.exec(`INSERT INTO quiz_try (id, user) VALUES (?, ?)`, id, user);
+    const correct = q.answer === choice;
+    const total = correct ? this.add({ user, pts: 5, reason: "quiz" }).total : this.total(user);
+    return { correct, total, ...q };
+  }
+
+  aiQuota({ user, day, limit }) {
+    const n = this.rows(`SELECT n FROM ai_usage WHERE user = ? AND day = ?`, user, day)[0]?.n ?? 0;
+    if (n >= limit) return { ok: false, n };
+    this.sql.exec(`INSERT INTO ai_usage (user, day, n) VALUES (?, ?, 1) ON CONFLICT(user, day) DO UPDATE SET n = n + 1`, user, day);
+    return { ok: true, n: n + 1 };
+  }
+
+  stats() {
+    return {
+      players: this.rows(`SELECT COUNT(*) AS n FROM points WHERE total > 0`)[0].n,
+      points: this.rows(`SELECT COALESCE(SUM(total), 0) AS s FROM points`)[0].s,
+      quizzes: this.rows(`SELECT COUNT(*) AS n FROM quiz`)[0].n,
+      thanks: this.rows(`SELECT COUNT(*) AS n FROM thanks`)[0].n,
+    };
+  }
+
+  async fetch(request) {
+    const { op, ...args } = await request.json();
+    if (typeof this[op] !== "function" || ["constructor", "rows", "fetch"].includes(op)) return Response.json({ error: "op inconnue" }, { status: 400 });
+    return Response.json(this[op](args));
+  }
+}
+
+// Appel depuis le Worker
+export async function store(env, op, args = {}) {
+  const stub = env.STORE.get(env.STORE.idFromName("kx"));
+  const res = await stub.fetch("https://store/", { method: "POST", body: JSON.stringify({ op, ...args }) });
+  return res.json();
+}

@@ -1,4 +1,5 @@
 // Parcours FDE: candidatures, niveaux, missions, défi hebdo, profil, aide
+import { store } from "./store.js";
 
 const MANAGE_ROLES = 0x10000000n;
 
@@ -72,9 +73,11 @@ export async function handleFde(name, i, env, ctx, h) {
       embeds: [{
         title: "KX Bot · Commandes", color: h.VIOLET, footer: h.FOOTER,
         fields: [
-          { name: "Pour tous", value: "`/ia` poser une question à l'IA\n`/resume` résumer un salon\n`/candidature` rejoindre le parcours FDE\n`/profil` voir ton niveau\n`/suggestion` proposer une idée\n`/contact` `/rdv` `/kx` travailler avec KX" },
-          { name: "Équipe et mentors", value: "`/niveau` changer le niveau d'un membre\n`/mission` publier une mission pour les FDE\n`/defi` publier un défi maintenant\n`/annonce` `/kx-roles`" },
-          { name: "Parcours FDE", value: "🌱 Apprenti → 🛠️ En formation → 🏅 FDE Certifié\nLes FDE certifiés accèdent aux missions clients." },
+          { name: "🤖 IA", value: "`/ia` poser une question\n`/review` faire relire ton workflow ou ton code\n`/pitch` transformer ton automatisation en pitch client\n`/quiz` question FDE (+5 pts)\n`/resume` résumer un salon\nClic droit sur un message → Applications → Résumer / Expliquer avec l'IA" },
+          { name: "🎓 Parcours FDE", value: "`/candidature` rejoindre le parcours\n`/profil` niveau et points\n🌱 Apprenti → 🛠️ En formation → 🏅 FDE Certifié (accès aux missions)" },
+          { name: "🏆 Communauté", value: "`/merci` remercier quelqu'un (+10 pts)\n`/classement` top de la semaine ou général\n`/stats` la communauté en chiffres\n`/suggestion` proposer une idée\n`/ticket` parler en privé à l'équipe" },
+          { name: "💼 Outils", value: "`/roi` calculer le temps gagné par une automatisation\n`/contact` `/rdv` `/kx` travailler avec KX" },
+          { name: "🛡️ Équipe et mentors", value: "`/niveau` `/points` `/mission` `/defi` `/atelier` `/annonce` `/kx-roles` `/kx-setup`" },
         ],
       }],
     }, true);
@@ -104,6 +107,7 @@ export async function handleFde(name, i, env, ctx, h) {
     const names = m.roles.map((id) => roles.find((r) => r.id === id)?.name).filter(Boolean);
     const step = [...h.LADDER].reverse().find((l) => names.includes(l.role));
     const isMentor = names.includes(h.MENTOR_ROLE);
+    const pts = await store(env, "profile", { user: targetId }).catch(() => null);
     const u = m.user;
     return h.reply({
       embeds: [{
@@ -113,6 +117,11 @@ export async function handleFde(name, i, env, ctx, h) {
           { name: "Niveau FDE", value: step ? `${step.emoji} ${step.label}` : "Pas encore dans le parcours (`/candidature`)", inline: true },
           { name: "Mentor", value: isMentor ? "Oui 🎓" : "Non", inline: true },
           { name: "Membre depuis", value: `<t:${Math.floor(new Date(m.joined_at).getTime() / 1000)}:D>`, inline: true },
+          ...(pts ? [
+            { name: "Points", value: `${pts.total}`, inline: true },
+            { name: "Classement", value: pts.total ? `#${pts.rank}` : "-", inline: true },
+            { name: "Cette semaine", value: `+${pts.week}`, inline: true },
+          ] : []),
         ],
         footer: h.FOOTER,
       }],

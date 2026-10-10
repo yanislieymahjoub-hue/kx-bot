@@ -49,6 +49,70 @@ const commands = [
   },
   { name: "mission", description: "(Équipe) Publier une mission client pour les FDE", default_member_permissions: MANAGE_ROLES },
   { name: "defi", description: "(Équipe) Publier un défi d'automatisation maintenant", default_member_permissions: MANAGE_MESSAGES },
+
+  // Lot 2
+  {
+    name: "merci", description: "Remercier un membre qui t'a aidé (+10 points pour lui)",
+    options: [
+      { type: 6, name: "membre", description: "Qui veux-tu remercier ?", required: true },
+      { type: 3, name: "raison", description: "Pour quoi ? (facultatif)", required: false, max_length: 120 },
+    ],
+  },
+  {
+    name: "classement", description: "Classement des contributeurs",
+    options: [{ type: 3, name: "periode", description: "Semaine ou général", required: false, choices: [{ name: "Cette semaine", value: "semaine" }, { name: "Général", value: "total" }] }],
+  },
+  {
+    name: "points", description: "(Équipe) Donner ou retirer des points", default_member_permissions: MANAGE_ROLES,
+    options: [
+      { type: 6, name: "membre", description: "Membre", required: true },
+      { type: 4, name: "nombre", description: "Points (négatif pour retirer)", required: true, min_value: -500, max_value: 500 },
+      { type: 3, name: "raison", description: "Raison", required: false, max_length: 120 },
+    ],
+  },
+  {
+    name: "quiz", description: "Une question FDE générée par l'IA (+5 points si tu trouves)",
+    options: [{ type: 3, name: "theme", description: "Thème (ex. n8n, API REST, RGPD, agents IA)", required: false, max_length: 80 }],
+  },
+  { name: "review", description: "Faire relire ton workflow ou ton code par l'IA (visible par toi seul)" },
+  {
+    name: "pitch", description: "Transformer ton automatisation en pitch client",
+    options: [
+      { type: 3, name: "automatisation", description: "Ce que fait ton automatisation", required: true, max_length: 1000 },
+      { type: 3, name: "client", description: "À qui tu le présentes (ex. gérant d'une PME du BTP)", required: false, max_length: 120 },
+    ],
+  },
+  {
+    name: "roi", description: "Calculer le temps et l'argent qu'une automatisation fait gagner",
+    options: [
+      { type: 4, name: "minutes", description: "Durée de la tâche en minutes", required: true, min_value: 1, max_value: 1440 },
+      { type: 4, name: "fois_par_semaine", description: "Combien de fois par semaine", required: true, min_value: 1, max_value: 500 },
+      { type: 4, name: "personnes", description: "Nombre de personnes qui la font", required: false, min_value: 1, max_value: 1000 },
+      { type: 4, name: "cout_horaire", description: "Coût horaire chargé en € (35 par défaut)", required: false, min_value: 10, max_value: 500 },
+    ],
+  },
+  {
+    name: "ticket", description: "Ouvrir un fil privé avec l'équipe KX",
+    options: [{ type: 3, name: "sujet", description: "Sujet (facultatif)", required: false, max_length: 150 }],
+  },
+  {
+    name: "atelier", description: "(Équipe) Créer un atelier live (événement + annonce)", default_member_permissions: MANAGE_ROLES,
+    options: [
+      { type: 3, name: "titre", description: "Titre", required: true, max_length: 100 },
+      { type: 3, name: "date", description: "JJ/MM ou JJ/MM/AAAA", required: true, max_length: 10 },
+      { type: 3, name: "heure", description: "18:30 ou 18h (heure de Paris)", required: true, max_length: 5 },
+      { type: 3, name: "description", description: "Ce qu'on va voir", required: false, max_length: 1000 },
+      { type: 4, name: "duree", description: "Durée en minutes (60 par défaut)", required: false, min_value: 15, max_value: 480 },
+    ],
+  },
+  { name: "stats", description: "La communauté KX en chiffres" },
+  { name: "kx-setup", description: "(Admin) Configurer salons, forums, support, accueil", default_member_permissions: "8" },
+
+  // Menus clic droit (Applications)
+  { type: 3, name: "Résumer avec l'IA" },
+  { type: 3, name: "Expliquer avec l'IA" },
+  { type: 3, name: "Remercier l'auteur" },
+  { type: 2, name: "Profil FDE" },
 ];
 
 const res = await fetch(`https://discord.com/api/v10/applications/${DISCORD_APP_ID}/guilds/${GUILD_ID}/commands`, {

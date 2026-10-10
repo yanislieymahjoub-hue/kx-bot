@@ -19,8 +19,23 @@ Bot Discord du serveur KX Automatisation, hébergé sur Cloudflare Workers (grat
 | `/niveau` | équipe | Apprenti, En formation, FDE Certifié ou Mentor (MP + annonce dans #certifications) |
 | `/mission` | équipe | Publie une mission dans #missions (privé FDE) avec bouton « Je suis intéressé » |
 | `/defi` | équipe | Défi d'automatisation généré par l'IA dans #défi-de-la-semaine |
+| `/merci` | tous | +10 points au membre remercié (1 fois par jour et par personne) |
+| `/classement` | tous | Top 10 de la semaine ou général |
+| `/points` | équipe | Donner ou retirer des points |
+| `/quiz` | tous | Question FDE générée par l'IA, +5 points si bonne réponse |
+| `/review` | tous | Relecture IA d'un workflow ou d'un code (privé) |
+| `/pitch` | tous | Pitch client, message LinkedIn et objections (privé) |
+| `/roi` | tous | Temps et argent gagnés par une automatisation |
+| `/ticket` | tous | Fil privé avec l'équipe (aussi via le bouton dans #support) |
+| `/atelier` | équipe | Événement Discord + annonce avec ping Notif lives |
+| `/stats` | tous | Membres, niveaux FDE, points, quiz |
+| `/kx-setup` | admin | Sujets des salons, tags des forums, salon support, écran d'accueil, accueil guidé |
+| Clic droit message | tous | Résumer avec l'IA, Expliquer avec l'IA, Remercier l'auteur |
+| Clic droit membre | tous | Profil FDE |
 
-Tâches automatiques: veille IA toutes les heures dans #veille-ia, défi IA chaque lundi à 9h dans #défi-de-la-semaine.
+Tâches automatiques: veille IA toutes les heures, défi IA + fil « build in public » chaque lundi à 9h, top contributeurs chaque dimanche à 18h.
+
+Mémoire (points, quiz, quotas IA): Durable Object SQLite `KXStore`, gratuit.
 
 ## Secrets (jamais dans le code)
 Dans GitHub → Settings → Secrets and variables → Actions:

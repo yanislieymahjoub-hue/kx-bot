@@ -13,7 +13,48 @@ export const CHANNELS = {
   certifications: "1558524921661890581",
   missions: "1558525306061594634",
   entre_fde: "1558525324420190250",
+  bienvenue: "1558493691545522186",
+  reglement: "1558493847183687770",
+  presente_toi: "1558493875797229608",
+  discussion: "1558493890363916369",
+  vos_creations: "1558493976804466718",
+  detente: "1558493991337721886",
+  questions: "1558494464081793106",
+  no_code: "1558494006026182736",
+  code: "1558494020164911214",
+  idees: "1558494034530533396",
+  realisations: "1558494099697573959",
+  ateliers: "1558494114247614534",
+  travailler: "1558494129779114107",
 };
+
+// Sujets affichés en haut de chaque salon (appliqués par /kx-setup)
+export const TOPICS = {
+  bienvenue: "Bienvenue chez KX. Commence ici, puis choisis tes notifications.",
+  reglement: "Les règles du serveur, à lire avant tout.",
+  annonces: "Les nouvelles de KX et de la communauté.",
+  presente_toi: "Dis-nous qui tu es et ce que tu automatises.",
+  discussion: "Discussion libre entre membres. /ia pour poser une question à l'IA.",
+  veille_ia: "Actus IA et automatisation, publiées automatiquement chaque heure.",
+  vos_creations: "Montre ce que tu construis, workflows, agents, scripts. Fil « build in public » chaque lundi.",
+  detente: "Hors sujet, memes et pause café.",
+  no_code: "n8n, Make, Zapier, entraide et astuces.",
+  code: "Python, JavaScript, API et scripts.",
+  idees: "Des idées de process à automatiser.",
+  realisations: "Automatisations livrées par KX, présentées de façon anonymisée.",
+  ateliers: "Dates des ateliers et lives. Prends le rôle Notif lives pour être prévenu.",
+  travailler: "Faire automatiser ton entreprise par KX, /contact ou /rdv.",
+  suggestions: "Propose une idée avec /suggestion, la communauté vote.",
+  parcours: "Le parcours FDE, Apprenti, En formation, FDE Certifié. /candidature pour commencer.",
+  defi: "Un défi d'automatisation chaque lundi à 9h. Rendus dans le forum des rendus.",
+  certifications: "Les nouveaux FDE certifiés de la communauté.",
+  missions: "Missions clients réservées aux FDE certifiés. Clique « Je suis intéressé ».",
+  entre_fde: "Espace d'échange des FDE certifiés.",
+  staff: "Espace équipe, candidatures, contacts et alertes du bot.",
+};
+
+// Limite d'utilisation de l'IA par membre et par jour (l'équipe n'a pas de limite)
+export const AI_DAILY_LIMIT = 30;
 
 // Parcours FDE: un seul de ces rôles à la fois (du plus bas au plus haut)
 export const LADDER = [

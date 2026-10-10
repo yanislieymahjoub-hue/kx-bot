@@ -1,6 +1,8 @@
 // KX Bot, version Cloudflare Worker (interactions HTTP Discord + IA Workers AI)
 import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM, LADDER, MENTOR_ROLE, DEFI_PROMPT } from "./config.js";
 import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
+import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLeaderboard, buildInPublic } from "./features.js";
+export { KXStore } from "./store.js";
 
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
@@ -169,8 +171,14 @@ async function handleCommand(interaction, env, ctx) {
     });
   }
 
+  if (name === "Profil FDE") {
+    interaction.data.options = [{ name: "membre", value: interaction.data.target_id }];
+    return handleFde("profil", interaction, env, ctx, helpers);
+  }
   const fde = await handleFde(name, interaction, env, ctx, helpers);
   if (fde) return fde;
+  const feat = await handleFeatures(name, interaction, env, ctx, helpers);
+  if (feat) return feat;
 
   return reply({ content: "Commande inconnue." }, true);
 }
@@ -191,13 +199,17 @@ async function handleComponent(interaction, env, ctx) {
   }
   const fde = await handleFdeComponent(interaction, env, ctx, helpers);
   if (fde) return fde;
+  const feat = await handleFeaturesComponent(interaction, env, ctx, helpers);
+  if (feat) return feat;
   return reply({ content: "Action inconnue." }, true);
 }
 
 async function handleModal(interaction, env, ctx) {
   if (interaction.data.custom_id !== "contact-modal") {
     const fde = await handleFdeModal(interaction, env, ctx, helpers);
-    return fde ?? reply({ content: "Formulaire inconnu." }, true);
+    if (fde) return fde;
+    const feat = await handleFeaturesModal(interaction, env, ctx, helpers);
+    return feat ?? reply({ content: "Formulaire inconnu." }, true);
   }
   const f = {};
   for (const row of interaction.data.components) for (const c of row.components) f[c.custom_id] = c.value;
@@ -266,7 +278,8 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    if (event.cron === "0 7 * * 1") ctx.waitUntil(postDefi(env, helpers));
+    if (event.cron === "0 7 * * 1") ctx.waitUntil(Promise.all([postDefi(env, helpers), buildInPublic(env, helpers)]));
+    else if (event.cron === "0 16 * * 0") ctx.waitUntil(weeklyLeaderboard(env, helpers));
     else ctx.waitUntil(veille(env));
   },
 };

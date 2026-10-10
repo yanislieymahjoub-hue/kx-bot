@@ -7,7 +7,7 @@ compatibility_date = "2025-09-01"
 binding = "AI"
 
 [triggers]
-crons = ["0 * * * *", "0 7 * * 1"]
+crons = ["0 * * * *", "0 7 * * 1", "0 16 * * 0"]
 
 [vars]
 # Identifiants publics de l'application Discord (pas secrets)
@@ -15,6 +15,14 @@ DISCORD_APP_ID = "1558510006364545074"
 DISCORD_PUBLIC_KEY = "7930d69307ad72e8b0bf3bf95d44fc6a65b534a94ccbecf84a8f258eacff2175"
 # Adresse de la CT qui reçoit les demandes /contact (vide = désactivé)
 CT_WEBHOOK_URL = ""
+
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "KXStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["KXStore"]
 
 [observability]
 enabled = true
