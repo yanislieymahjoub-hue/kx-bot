@@ -30,7 +30,8 @@ export function onboardingBody(C, roles, extraDefault = []) {
     id: sf(), title, ...(description ? { description } : {}), emoji_name: emoji,
     channel_ids: channels.map((k) => C[k] ?? k).filter(Boolean), role_ids: roleNames.map(rid).filter(Boolean),
   });
-  const prompt = (title, single, required, options) => ({ id: sf(), type: 0, title, single_select: single, required, in_onboarding: true, options });
+  // Discord limite l'arrivée à 5 questions, les suivantes restent dans « Salons et rôles »
+  const prompt = (title, single, required, options, in_onboarding = true) => ({ id: sf(), type: 0, title, single_select: single, required, in_onboarding, options });
 
   return {
     enabled: true, mode: 0,
@@ -76,7 +77,7 @@ export function onboardingBody(C, roles, extraDefault = []) {
         opt("Lives et ateliers", "Être prévenu des ateliers", "🎓", ["ateliers"], ["Notif lives"]),
         opt("Défi de la semaine", "Chaque lundi à 9h", "🏋️", ["defi"], ["Notif défis"]),
         opt("Annonces", "Les nouveautés K’X", "📢", ["annonces"], ["Notif annonces"]),
-      ]),
+      ], false),
     ],
   };
 }

@@ -52,7 +52,7 @@ export async function ensureRoles(env, h, botId) {
   // anciens noms renommés (marque K’X avec apostrophe)
   for (const [from, to] of Object.entries(RENAMED)) {
     const r = roles.find((x) => x.name === from);
-    if (r && !roles.some((x) => x.name === to)) { await h.discord(env, "PATCH", `/guilds/${G}/roles/${r.id}`, { name: to }); created.push(`${from} → ${to}`); }
+    if (r && !roles.some((x) => x.name === to) && (await h.discord(env, "PATCH", `/guilds/${G}/roles/${r.id}`, { name: to })).ok) created.push(`${from} → ${to}`);
   }
   if (created.length) roles = await get(`/guilds/${G}/roles`);
   for (const [name, color, hoist, permissions, type] of ROLES) {
