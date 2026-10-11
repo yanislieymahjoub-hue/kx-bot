@@ -164,6 +164,15 @@ export async function runPublish(env, h) {
     return [done.length ? `réglés pour ${done.join(", ")}` : "", absent.length ? `pas encore sur le serveur ${absent.join(", ")}` : ""].filter(Boolean).join(", ");
   });
 
+  // ---------- lien d'invitation qui arrive directement dans #bienvenue
+  await step("Lien d'invitation vers #bienvenue", async () => {
+    const all = await get(`/guilds/${G}/invites`);
+    let inv = all.find((x) => x.channel?.id === C.bienvenue && !x.max_age && !x.max_uses && !x.temporary);
+    if (!inv) inv = await (await ok(await h.discord(env, "POST", `/channels/${C.bienvenue}/invites`, { max_age: 0, max_uses: 0, unique: true }))).json();
+    const others = all.filter((x) => x.channel?.id !== C.bienvenue);
+    return `https://discord.gg/${inv.code}${others.length ? `, ${others.length} ancien${others.length > 1 ? "s" : ""} lien${others.length > 1 ? "s" : ""} mène${others.length > 1 ? "nt" : ""} ailleurs (${others.map((x) => `${x.code} → #${x.channel?.name}`).join(", ")})` : ""}`;
+  });
+
   // ---------- bots externes renommés aux couleurs de K’X
   await step("Surnoms des bots externes", async () => {
     const done = [];
