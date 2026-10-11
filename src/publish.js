@@ -19,7 +19,7 @@ const EXTERNAL_BOTS = { "411916947773587456": "K’X Musique" }; // Jockie Music
 export async function runPublish(env, h) {
   const out = [];
   const step = async (label, fn) => { try { const r = await fn(); out.push(`${r === false ? "⚠️" : "✅"} ${label}${typeof r === "string" ? ` · ${r}` : ""}`); } catch (e) { out.push(`❌ ${label} · ${e.message}`); } };
-  const ok = async (res) => { if (res.ok) return res; throw new Error(`${res.status} ${(await res.text()).slice(0, 160)}`); };
+  const ok = async (res) => { if (res.ok) return res; throw new Error(`${res.status} ${(await res.text()).slice(0, 700)}`); };
   const get = async (path) => (await ok(await h.discord(env, "GET", path))).json();
   const C = h.CHANNELS, G = h.GUILD_ID, botId = env.DISCORD_APP_ID;
   // Remplace la publication du bot dans un salon: modification sur place si possible, sinon nouvelle publication et retrait de l'ancienne
