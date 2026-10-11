@@ -66,6 +66,13 @@ export async function runPublish(env, h) {
   // Discord ne laisse pas un bot changer le salon des règles, on le signale seulement
   if (guild.rules_channel_id !== C.reglement) out.push("⚠️ Salon des règles · à régler dans Paramètres du serveur, Communauté, Vue d'ensemble");
 
+  // ---------- catégories à la marque K’X
+  await step("Catégories K’X", async () => {
+    const cats = chans.filter((c) => c.type === 4 && /\bKX\b/.test(c.name));
+    for (const c of cats) await ok(await h.discord(env, "PATCH", `/channels/${c.id}`, { name: c.name.replace(/\bKX\b/g, "K’X") }));
+    return cats.length ? `${cats.length} renommée${cats.length > 1 ? "s" : ""}` : "déjà à jour";
+  });
+
   // ---------- rôles (équipe, badges, communauté)
   await step("Rôles", async () => ensureRoles(env, h, botId));
   await step("Badge Pionnier pour les premiers membres", async () => {
