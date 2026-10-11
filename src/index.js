@@ -11,6 +11,7 @@ import { planEspaces, planTexte, appliquerEspaces, restaurerEspaces, rejoindreFd
 import { BOTS, tokenOf, publicKeyOf, botByPath } from "./bots.js";
 import { tourStep, tourLoading, TOUR, V2, botCard, INTRO_CMD } from "./guide.js";
 export { KXStore } from "./store.js";
+import { setJobRunner } from "./store.js";
 
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
@@ -89,14 +90,12 @@ async function handleCommand(interaction, env, ctx) {
   if (name === "kx-espaces") {
     if (!isCoord(interaction) || (BigInt(interaction.member.permissions) & 8n) !== 8n) return reply({ content: "Réservé aux administrateurs." }, true);
     const mode = opt(interaction, "mode");
-    ctx.waitUntil((async () => {
-      let lines;
-      try {
-        lines = mode === "plan" ? [planTexte(await planEspaces(env, helpers))] : mode === "appliquer" ? await appliquerEspaces(env, helpers) : await restaurerEspaces(env, helpers);
-        if (mode === "appliquer") lines.push(...(await runPublish(env, helpers)).filter((l) => /bienvenue|démarrer|❌|⚠️/.test(l)));
-      } catch (e) { lines = [`❌ ${e.message}`]; }
-      await followUp(env, interaction, { content: lines.join("\n").slice(0, 1990) });
-    })());
+    if (mode === "plan") {
+      ctx.waitUntil((async () => followUp(env, interaction, { content: planTexte(await planEspaces(env, helpers)).slice(0, 1990) }))());
+    } else {
+      // travail long: confié au Durable Object, qui répond dans ce même message à la fin
+      ctx.waitUntil(store(env, "jobStart", { job: { kind: `espaces-${mode}`, app: interaction.application_id, token: interaction.token } }));
+    }
     return json({ type: 5, data: { flags: EPHEMERAL } });
   }
 
@@ -418,6 +417,19 @@ export default {
     else ctx.waitUntil(Promise.all([veille(env), rdvReminders(env, helpers), syncInvites(env, helpers)]));
   },
 };
+
+// exécution des travaux longs par l'alarme du Durable Object
+setJobRunner(async (env, job) => {
+  let lines;
+  try {
+    if (job.kind === "espaces-appliquer") {
+      lines = await appliquerEspaces(env, helpers);
+      lines.push(...(await runPublish(env, helpers)).filter((l) => /bienvenue|démarrer|❌|⚠️/.test(l)));
+    } else if (job.kind === "espaces-restaurer") lines = await restaurerEspaces(env, helpers);
+    else return;
+  } catch (e) { lines = [`❌ ${e.message}`]; }
+  await fetch(`${API}/webhooks/${job.app}/${job.token}/messages/@original`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: lines.join("\n").slice(0, 1990) }) });
+});
 
 // outils partagés avec fde.js
 const helpers = { BOTS, json, reply, discord, followUp, opt, isStaff, ask, VIOLET, LILAS, AMBRE, FOOTER, EPHEMERAL, GUILD_ID, CHANNELS, LADDER, MENTOR_ROLE, DEFI_PROMPT, AI_SYSTEM };

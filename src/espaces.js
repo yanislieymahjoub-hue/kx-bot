@@ -64,9 +64,15 @@ export async function appliquerEspaces(env, h) {
   const guild = await (await h.discord(env, "GET", `/guilds/${G}`)).json();
 
   // 1. sauvegarde pour retour arrière
-  const snap = { at: new Date().toISOString(), channels: p.chans.map((c) => ({ id: c.id, overwrites: c.permission_overwrites ?? [] })), system_channel_flags: guild.system_channel_flags };
-  await store(env, "setting", { key: "snapshot:espaces", value: JSON.stringify(snap) });
-  out.push(`✅ Sauvegarde des droits de ${snap.channels.length} salons`);
+  // la sauvegarde n'est jamais écrasée tant que le cloisonnement n'a pas été restauré (reprise après coupure)
+  const etat = (await store(env, "setting", { key: "espaces" })).value;
+  const exist = (await store(env, "setting", { key: "snapshot:espaces" })).value;
+  if (!exist || etat === "inactif") {
+    const snap = { at: new Date().toISOString(), channels: p.chans.map((c) => ({ id: c.id, overwrites: c.permission_overwrites ?? [] })), system_channel_flags: guild.system_channel_flags };
+    await store(env, "setting", { key: "snapshot:espaces", value: JSON.stringify(snap) });
+    out.push(`✅ Sauvegarde des droits de ${snap.channels.length} salons`);
+  } else out.push("✅ Sauvegarde d'origine conservée (reprise)");
+  await store(env, "setting", { key: "espaces", value: "en_cours" });
 
   // 2. rôles techniques neutres
   const neutral = { color: 0, hoist: false, mentionable: false, permissions: "0" };

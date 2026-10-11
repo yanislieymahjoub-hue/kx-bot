@@ -1,8 +1,14 @@
 // Mémoire du bot: Durable Object SQLite (gratuit sur Cloudflare)
 // Points, remerciements, quiz, quota IA.
 
+// Travaux longs (au-delà des 30 s d'une interaction): exécutés par l'alarme du Durable Object
+let jobRunner = null;
+export const setJobRunner = (fn) => { jobRunner = fn; };
+
 export class KXStore {
-  constructor(state) {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
     this.sql = state.storage.sql;
     this.sql.exec(`CREATE TABLE IF NOT EXISTS points (user TEXT PRIMARY KEY, total INTEGER NOT NULL DEFAULT 0)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS log (user TEXT, pts INTEGER, reason TEXT, ts INTEGER)`);
@@ -135,9 +141,24 @@ export class KXStore {
     return { value: this.rows(`SELECT value FROM settings WHERE key = ?`, key)[0]?.value ?? null };
   }
 
+  jobStart({ job }) {
+    this.setting({ key: "job", value: JSON.stringify(job) });
+    this.state.storage.setAlarm(Date.now() + 200);
+    return { ok: true };
+  }
+
+  async alarm() {
+    const raw = this.setting({ key: "job" }).value;
+    if (!raw || !jobRunner) return;
+    this.setting({ key: "job", value: "" });
+    const self = this;
+    const STORE = { idFromName: () => "kx", get: () => ({ fetch: async (_u, o) => self.fetch(new Request("https://store/", o)) }) };
+    try { await jobRunner({ ...this.env, STORE }, JSON.parse(raw)); } catch (e) { console.log("Travail échoué", e.message); }
+  }
+
   async fetch(request) {
     const { op, ...args } = await request.json();
-    if (typeof this[op] !== "function" || ["constructor", "rows", "fetch"].includes(op)) return Response.json({ error: "op inconnue" }, { status: 400 });
+    if (typeof this[op] !== "function" || ["constructor", "rows", "fetch", "alarm"].includes(op)) return Response.json({ error: "op inconnue" }, { status: 400 });
     return Response.json(this[op](args));
   }
 }
