@@ -70,9 +70,12 @@ export async function appliquerEspaces(env, h) {
 
   // 2. rôles techniques neutres
   const neutral = { color: 0, hoist: false, mentionable: false, permissions: "0" };
+  // l'ancien badge « Client » est renommé si le bot en a le droit, sinon un rôle neutre est créé à côté
   const old = roles.find((r) => r.name === OLD_CLIENT);
-  if (old && !roles.some((r) => r.name === ROLE_CLIENT)) await ok(await h.discord(env, "PATCH", `/guilds/${G}/roles/${old.id}`, { name: ROLE_CLIENT, ...neutral }), "rôle client");
-  for (const name of [ROLE_CLIENT, ROLE_FDE]) if (!roles.some((r) => r.name === name) && !(name === ROLE_CLIENT && old)) await ok(await h.discord(env, "POST", `/guilds/${G}/roles`, { name, ...neutral }), name);
+  let renamed = false;
+  if (old && !roles.some((r) => r.name === ROLE_CLIENT)) renamed = (await h.discord(env, "PATCH", `/guilds/${G}/roles/${old.id}`, { name: ROLE_CLIENT, ...neutral })).ok;
+  if (old && !renamed) out.push("⚠️ Le rôle « Client » est au-dessus du bot, renomme-le ou supprime-le toi-même (il n'est plus utilisé)");
+  for (const name of [ROLE_CLIENT, ROLE_FDE]) if (!roles.some((r) => r.name === name) && !(name === ROLE_CLIENT && renamed)) await ok(await h.discord(env, "POST", `/guilds/${G}/roles`, { name, ...neutral }), name);
   roles = await (await h.discord(env, "GET", `/guilds/${G}/roles`)).json();
   const rid = (n) => roles.find((r) => r.name === n)?.id;
   const fdeRole = rid(ROLE_FDE), clientRole = rid(ROLE_CLIENT);
