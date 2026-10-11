@@ -114,7 +114,7 @@ export async function runPublish(env, h) {
     const roles = await get(`/guilds/${G}/roles`);
     await ok(await h.discord(env, "PUT", `/guilds/${G}/onboarding`, onboardingBody(C, roles, guide ? [guide.id] : [])));
     await ok(await h.discord(env, "PATCH", `/guilds/${G}/welcome-screen`, WELCOME_SCREEN(C)));
-    return "5 questions à l'arrivée, notifications dans Salons et rôles";
+    return "5 questions à l'arrivée";
   });
 
   // ---------- tickets: panneau de choix et salon vocal des entretiens

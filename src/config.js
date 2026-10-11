@@ -69,10 +69,7 @@ export const LADDER = [
 export const MENTOR_ROLE = "Mentor";
 
 // Rôles que les membres prennent eux-mêmes avec les boutons de /kx-roles
-export const SELF_ROLES = [
-  ["Notif lives", "🎓"],
-  ["Notif annonces", "📢"],
-];
+export const SELF_ROLES = [["Notif lives", "🎓"], ["Notif annonces", "📢"], ["Notif défis", "🏋️"]];
 
 export const RDV_URL = "https://kxautomatisation.fr";
 

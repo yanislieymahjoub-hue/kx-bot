@@ -73,11 +73,6 @@ export function onboardingBody(C, roles, extraDefault = []) {
         SKILLS.filter(([, , g]) => g === "auto").map(([n, e]) => opt(n, null, e, ["no_code"], [n]))),
       prompt("Tes compétences techniques", false, false,
         SKILLS.filter(([, , g]) => g === "tech").map(([n, e]) => opt(n, null, e, ["code"], [n]))),
-      prompt("Quelles notifications veux-tu ?", false, false, [
-        opt("Lives et ateliers", "Être prévenu des ateliers", "🎓", ["ateliers"], ["Notif lives"]),
-        opt("Défi de la semaine", "Chaque lundi à 9h", "🏋️", ["defi"], ["Notif défis"]),
-        opt("Annonces", "Les nouveautés K’X", "📢", ["annonces"], ["Notif annonces"]),
-      ], false),
     ],
   };
 }
