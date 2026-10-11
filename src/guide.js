@@ -28,14 +28,14 @@ export function welcomeV2(commandesId, selfRoles) {
       text([
         "KX aide les entreprises à gagner du temps grâce à l'automatisation et à l'IA, de l'artisan au grand groupe.",
         "",
-        "Ce serveur réunit les **FDE**, les Forward Deployed Engineers. Ils vont sur le terrain, comprennent le métier d'un client et lui livrent des automatisations qui tournent pour de vrai. Débutant ou confirmé, tu as ta place ici.",
+        "Ce serveur réunit les **FDE** (Forward Deployed Engineers, les ingénieurs qui déploient l'IA directement chez le client). Ils vont sur le terrain, comprennent le métier d'un client et lui livrent des automatisations qui tournent pour de vrai. Débutant ou confirmé, tu as ta place ici.",
         "-# Yanis, fondateur de KX",
       ].join("\n")),
       sep(2),
       text([
         "-# 01 · LE PARCOURS",
         "**Apprenti → En formation → FDE Certifié**",
-        "Tu candidates avec `/candidature`, tu relèves le défi du lundi et un mentor valide ta progression. Une fois certifié, tu accèdes aux missions clients.",
+        "Tu candidates avec `/candidature`, on se parle en vocal, tu relèves le défi du lundi et un mentor valide ta progression. Une fois certifié, tu accèdes aux missions clients.",
         "",
         "-# 02 · LES SALONS",
         `<#${C.annonces}> les nouvelles · <#${C.parcours}> la certification · <#${C.defi}> le défi du lundi · <#${C.rendus}> tes rendus · <#${C.questions}> l'entraide · <#${C.vos_creations}> tes projets · <#${C.discussion}> tout le reste`,
@@ -71,7 +71,7 @@ const DOCS = {
     "`/contact` Décris ton besoin, l'équipe KX te recontacte 🔒",
     "`/rdv` Réserve un échange découverte gratuit 🔒",
     "`/roi` Calcule le temps et l'argent qu'une automatisation fait gagner en un an",
-    "`/ticket` Ouvre un fil privé avec l'équipe",
+    "`/ticket` Ouvre un fil privé avec l'équipe, avec prise de rendez-vous en vocal pour les candidatures",
     "`/suggestion` Propose une idée, la communauté vote pendant 3 jours",
     "-# Équipe · `/annonce` `/kx-roles` `/kx-setup` `/kx-publier`",
   ]],
@@ -84,7 +84,7 @@ const DOCS = {
     "-# 30 demandes par jour et par membre",
   ]],
   academie: ["Parcours FDE, défis et ateliers", [
-    "`/candidature` Entre dans le parcours, tu passes Apprenti",
+    "`/candidature` Entre dans le parcours, tu passes Apprenti et un ticket s'ouvre pour fixer ton entretien en vocal",
     "`/profil` Ton niveau, ton mentor et tes points",
     "**Clic droit sur un membre → Applications → Profil FDE** donne la même fiche",
     "**Badges Expert** Cyber, Réseau, IA, No-code, Dev et Data, donnés par l'équipe à ceux qui ont fait leurs preuves",
@@ -140,10 +140,11 @@ const TOUR = [
     "La visite dure une minute, clique sur Suivant.",
   ]],
   [BOTS.academie.color, "bots/academie.png", "Le parcours FDE", [
+    "-# FDE, Forward Deployed Engineer, l'ingénieur qui déploie l'IA chez le client",
     "**Apprenti** tu découvres et tu relèves le défi du lundi",
     "**En formation** un mentor suit tes rendus",
     "**FDE Certifié** tu accèdes aux missions clients",
-    "Tout commence avec `/candidature`.",
+    "Tout commence par une candidature, puis un entretien en vocal avec l'équipe.",
   ]],
   [BOTS.ia.color, "banners/equipe.gif", "Six bots, chacun son rôle", [
     "**KX Bot** l'accueil et l'équipe · **KX IA** tes questions",

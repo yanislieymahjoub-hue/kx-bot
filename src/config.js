@@ -48,7 +48,7 @@ export const TOPICS = {
   ateliers: "Dates des ateliers et lives. Prends le rôle Notif lives pour être prévenu.",
   travailler: "Faire automatiser ton entreprise par KX, /contact ou /rdv.",
   suggestions: "Propose une idée avec /suggestion, la communauté vote.",
-  parcours: "Le parcours FDE, Apprenti, En formation, FDE Certifié. /candidature pour commencer.",
+  parcours: "Le parcours FDE (Forward Deployed Engineer, l'ingénieur qui déploie l'IA chez le client). Apprenti, En formation, FDE Certifié. /candidature pour commencer.",
   defi: "Un défi d'automatisation chaque lundi à 9h. Rendus dans le forum des rendus.",
   certifications: "Les nouveaux FDE certifiés de la communauté.",
   missions: "Missions clients réservées aux FDE certifiés. Clique « Je suis intéressé ».",

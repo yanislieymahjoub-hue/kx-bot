@@ -3,6 +3,8 @@ import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM
 import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
 import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLeaderboard, buildInPublic } from "./features.js";
 import { runPublish } from "./publish.js";
+import { handleTicketComponent, handleTicketModal, rdvReminders } from "./tickets.js";
+import { parisToUtc } from "./features.js";
 import { BOTS, tokenOf, publicKeyOf, botByPath } from "./bots.js";
 import { tourStep, tourLoading, TOUR, V2 } from "./guide.js";
 export { KXStore } from "./store.js";
@@ -249,6 +251,8 @@ async function handleComponent(interaction, env, ctx) {
     return inTour ? json({ type: 7, data: v2only(tourStep(n, 0)) }) : json({ type: 4, data: tourLoading(1) });
   }
   if (id === "open:candidature") return handleFde("candidature", interaction, env, ctx, helpers);
+  const ticket = await handleTicketComponent(interaction, env, ctx, helpers);
+  if (ticket) return ticket;
   if (id.startsWith("role:")) {
     const label = id.slice(5);
     const roles = await (await discord(env, "GET", `/guilds/${GUILD_ID}/roles`)).json();
@@ -268,6 +272,8 @@ async function handleComponent(interaction, env, ctx) {
 }
 
 async function handleModal(interaction, env, ctx) {
+  const ticket = await handleTicketModal(interaction, env, ctx, helpers, parisToUtc);
+  if (ticket) return ticket;
   if (interaction.data.custom_id !== "contact-modal") {
     const fde = await handleFdeModal(interaction, env, ctx, helpers);
     if (fde) return fde;
@@ -352,7 +358,7 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === "0 7 * * MON") ctx.waitUntil(Promise.all([postDefi(env, helpers), buildInPublic(env, helpers)]));
     else if (event.cron === "0 16 * * SUN") ctx.waitUntil(weeklyLeaderboard(env, helpers));
-    else ctx.waitUntil(veille(env));
+    else ctx.waitUntil(Promise.all([veille(env), rdvReminders(env, helpers)]));
   },
 };
 

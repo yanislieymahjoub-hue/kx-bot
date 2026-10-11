@@ -2,6 +2,7 @@
 import { store } from "./store.js";
 import { guideV2 } from "./guide.js";
 import { BADGES, BADGE_EMOJI } from "./roles.js";
+import { candidatureModal, openTicket } from "./tickets.js";
 
 const MANAGE_ROLES = 0x10000000n;
 
@@ -73,21 +74,7 @@ export async function handleFde(name, i, env, ctx, h) {
 
   if (name === "aide") return h.json({ type: 4, data: guideV2(true) });
 
-  if (name === "candidature") {
-    return h.json({
-      type: 9,
-      data: {
-        custom_id: "candidature-modal", title: "Candidature parcours FDE",
-        components: [
-          modalRow("niveau", "Où en es-tu ? (débutant, junior, confirmé)", 1, true, 60),
-          modalRow("outils", "Outils que tu maîtrises", 1, true, 200, "n8n, Make, Python, API, agents IA..."),
-          modalRow("projets", "Un projet d'automatisation dont tu es fier", 2, true, 800),
-          modalRow("objectif", "Ce que tu attends du parcours", 2, true, 400),
-          modalRow("lien", "Portfolio, GitHub ou LinkedIn (facultatif)", 1, false, 200),
-        ],
-      },
-    });
-  }
+  if (name === "candidature") return h.json(candidatureModal());
 
   if (name === "profil") {
     const targetId = h.opt(i, "membre") ?? user.id;
@@ -196,6 +183,10 @@ export async function handleFdeComponent(i, env, ctx, h) {
       }
     })());
     const label = { formation: "🛠️ Passé En formation", fde: "🏅 Certifié FDE", refus: "❌ Refusé" }[action] ?? action;
+    if ((i.message.flags ?? 0) & 32768) {
+      ctx.waitUntil(h.discord(env, "POST", `/channels/${i.channel_id}/messages`, { embeds: [{ color: h.BOTS.academie.color, description: `${label} · <@${targetId}>, décision de ${by}` }], allowed_mentions: { parse: [] } }, "academie"));
+      return h.reply({ content: `C'est noté, ${label.toLowerCase()}.` }, true);
+    }
     const embed = { ...(i.message.embeds?.[0] ?? {}), footer: { text: `${label} par ${by}` } };
     return h.json({ type: 7, data: { embeds: [embed], components: [] } });
   }
@@ -220,24 +211,11 @@ export async function handleFdeModal(i, env, ctx, h) {
   if (i.data.custom_id === "candidature-modal") {
     ctx.waitUntil((async () => {
       await setLevel(h, env, user.id, "apprenti");
-      const fields = [
-        { name: "Niveau déclaré", value: f.niveau || "-", inline: true },
-        { name: "Outils", value: f.outils || "-", inline: true },
-        { name: "Projet", value: f.projets || "-" },
-        { name: "Objectif", value: f.objectif || "-" },
-      ];
-      if (f.lien) fields.push({ name: "Lien", value: f.lien });
-      await h.discord(env, "POST", `/channels/${h.CHANNELS.staff}/messages`, {
-        embeds: [{ color: h.VIOLET, title: `Candidature FDE · ${user.global_name ?? user.username}`, description: `<@${user.id}> (passé Apprenti automatiquement)`, fields, timestamp: new Date().toISOString() }],
-        components: [{ type: 1, components: [
-          { type: 2, style: 1, label: "Passer En formation", emoji: { name: "🛠️" }, custom_id: `cand:formation:${user.id}` },
-          { type: 2, style: 3, label: "Certifier FDE", emoji: { name: "🏅" }, custom_id: `cand:fde:${user.id}` },
-          { type: 2, style: 4, label: "Refuser", custom_id: `cand:refus:${user.id}` },
-        ] }],
-      }, "academie");
+      const msg = await openTicket(env, h, user, "candidature", { "Niveau et outils": f.niveau, Projet: f.projets, Objectif: f.objectif, Lien: f.lien, Disponibilités: f.dispos });
       await announceLevel(h, env, user.id, h.LADDER[0], "KX Académie");
+      await h.followUp(env, i, { content: `Candidature envoyée ✅ Tu es maintenant **Apprenti** 🌱\n${msg}\nOn y fixe ensemble l'heure de ton entretien en vocal.` });
     })());
-    return h.reply({ content: "Candidature envoyée ✅ Tu es maintenant **Apprenti** 🌱 L'équipe va l'étudier, regarde tes messages privés." }, true);
+    return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
   }
 
   if (i.data.custom_id === "mission-modal") {
@@ -268,7 +246,9 @@ export async function postDefi(env, h) {
   ], 1500);
   if (!text) { console.log("Défi non publié: réponse IA vide"); return; }
   const week = Math.ceil((((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 864e5) + 1) / 7);
+  const notif = (await guildRoles(h, env)).find((r) => r.name === "Notif défis");
   await h.discord(env, "POST", `/channels/${h.CHANNELS.defi}/messages`, {
+    content: notif ? `<@&${notif.id}>` : undefined, allowed_mentions: { roles: notif ? [notif.id] : [] },
     embeds: [{
       color: h.BOTS.academie.color, title: `🏋️ Défi de la semaine ${week}`,
       description: `${text}\n\n➡️ Poste ton rendu dans <#${h.CHANNELS.rendus}> et discute-en dans le fil ci-dessous.`,

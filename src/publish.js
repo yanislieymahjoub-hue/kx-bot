@@ -3,6 +3,8 @@ import { LOGO_DATA_URI } from "./logo.js";
 import { guideV2, welcomeV2 } from "./guide.js";
 import { BOTS, BOT_PERMISSIONS } from "./bots.js";
 import { ensureRoles } from "./roles.js";
+import { onboardingBody, WELCOME_SCREEN } from "./onboarding.js";
+import { supportPanel, SUPPORT_NAME, VOICE_NAME, STAFF_ROLES } from "./tickets.js";
 import { SELF_ROLES } from "./config.js";
 import { store } from "./store.js";
 
@@ -52,7 +54,7 @@ export async function runPublish(env, h) {
     await step("Icône et description du serveur", async () => {
       await ok(await h.discord(env, "PATCH", `/guilds/${G}`, {
         icon: LOGO_DATA_URI,
-        description: "La communauté des FDE. Automatisation, agents IA et missions clients, par KX Automatisation.",
+        description: "La communauté des FDE (ingénieurs qui déploient l'IA chez le client). Automatisation, agents IA et missions clients, par KX Automatisation.",
       }));
     });
     if (out.slice(before).every((l) => l.startsWith("✅"))) await store(env, "setting", { key: "logo", value: logoHash }).catch(() => {});
@@ -98,25 +100,32 @@ export async function runPublish(env, h) {
     return `${created ? "créé" : "déjà présent"}, guide ${r}`;
   });
 
-  // ---------- le salon des commandes visible dès l'arrivée
-  await step("Accueil guidé", async () => {
-    if (!guide) return false;
-    const ob = await get(`/guilds/${G}/onboarding`);
-    if (ob.default_channel_ids.includes(guide.id)) return "déjà à jour";
-    const body = {
-      enabled: ob.enabled, mode: ob.mode,
-      default_channel_ids: [...ob.default_channel_ids, guide.id],
-      prompts: ob.prompts.map((p) => ({
-        id: p.id, type: p.type, title: p.title, single_select: p.single_select, required: p.required, in_onboarding: p.in_onboarding,
-        options: p.options.map((o) => ({
-          id: o.id, title: o.title, ...(o.description ? { description: o.description } : {}),
-          ...(o.emoji?.id ? { emoji_id: o.emoji.id } : {}), ...(o.emoji?.name ? { emoji_name: o.emoji.name } : {}),
-          channel_ids: o.channel_ids, role_ids: o.role_ids,
-        })),
-      })),
-    };
-    await ok(await h.discord(env, "PUT", `/guilds/${G}/onboarding`, body));
-    return "salon des commandes ajouté";
+  // ---------- écran d'arrivée: questions, rôles et salons
+  await step("Écran d'arrivée", async () => {
+    const roles = await get(`/guilds/${G}/roles`);
+    await ok(await h.discord(env, "PUT", `/guilds/${G}/onboarding`, onboardingBody(C, roles, guide ? [guide.id] : [])));
+    await ok(await h.discord(env, "PATCH", `/guilds/${G}/welcome-screen`, WELCOME_SCREEN(C)));
+    return "5 questions, compétences et notifications";
+  });
+
+  // ---------- tickets: panneau de choix et salon vocal des entretiens
+  await step("Tickets et salon vocal des entretiens", async () => {
+    const support = chans.find((c) => c.name === SUPPORT_NAME);
+    if (!support) return "salon support absent, lance /kx-setup";
+    let voice = chans.find((c) => c.name === VOICE_NAME);
+    if (!voice) {
+      const roles = await get(`/guilds/${G}/roles`);
+      const staff = roles.filter((r) => STAFF_ROLES.includes(r.name));
+      voice = await (await ok(await h.discord(env, "POST", `/guilds/${G}/channels`, {
+        name: VOICE_NAME, type: 2, parent_id: support.parent_id,
+        permission_overwrites: [
+          { id: G, type: 0, deny: String(1024n) },
+          ...staff.map((r) => ({ id: r.id, type: 0, allow: String(1024n | 1048576n | 2097152n | 512n | 33554432n) })),
+        ],
+      }))).json();
+    }
+    const r = await upsert(support.id, supportPanel(BOTS.kx.color), (m) => JSON.stringify(m.components ?? []).includes('"ticket:'));
+    return `panneau ${r}, vocal <#${voice.id}>`;
   });
 
   // ---------- accueil dans #bienvenue (bannière animée, présentation, boutons)

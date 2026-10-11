@@ -1,3 +1,5 @@
+import { SKILLS } from "./onboarding.js";
+
 // Rôles du serveur: équipe, badges d'expertise, rôles de communauté. Créés et rangés par /kx-publier.
 // Ordre = du plus haut au plus bas, sous le rôle de KX Bot. Les rôles déjà existants non listés gardent leur ordre, en dessous.
 
@@ -26,8 +28,10 @@ export const ROLES = [
   ["Bêta-testeur", 0x94a3b8, false, "0", "badge"],
   ["Pionnier", 0xb69cff, false, "0", "badge"],
   ["Membre", null, null, null, "existant"],
+  ...SKILLS.map(([n]) => [n, 0, false, "0", "competence"]),
   ["Notif lives", null, null, null, "existant"],
   ["Notif annonces", null, null, null, "existant"],
+  ["Notif défis", 0, false, "0", "notif"],
 ];
 
 // Badges que l'équipe peut donner avec /badge (KX Académie)

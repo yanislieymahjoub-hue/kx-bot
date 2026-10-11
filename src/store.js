@@ -11,6 +11,7 @@ export class KXStore {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS quiz_try (id TEXT, user TEXT, PRIMARY KEY (id, user))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS ai_usage (user TEXT, day TEXT, n INTEGER, PRIMARY KEY (user, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS rdv (thread TEXT, owner TEXT, ts INTEGER, reminded INTEGER DEFAULT 0, PRIMARY KEY (thread, ts))`);
   }
 
   rows(q, ...b) { return this.sql.exec(q, ...b).toArray(); }
@@ -70,6 +71,17 @@ export class KXStore {
       quizzes: this.rows(`SELECT COUNT(*) AS n FROM quiz`)[0].n,
       thanks: this.rows(`SELECT COUNT(*) AS n FROM thanks`)[0].n,
     };
+  }
+
+  // appels vocaux confirmés dans les tickets
+  rdvSave({ thread, owner, ts }) {
+    this.sql.exec(`INSERT OR REPLACE INTO rdv (thread, owner, ts, reminded) VALUES (?, ?, ?, 0)`, thread, owner, ts);
+    return { ok: true };
+  }
+  rdvDue({ now, within }) {
+    const rows = this.rows(`SELECT thread, owner, ts FROM rdv WHERE reminded = 0 AND ts > ? AND ts <= ?`, now, now + within);
+    for (const r of rows) this.sql.exec(`UPDATE rdv SET reminded = 1 WHERE thread = ? AND ts = ?`, r.thread, r.ts);
+    return rows;
   }
 
   // réglages simples (ex. version du logo déjà appliquée)

@@ -2,6 +2,8 @@
 import { store } from "./store.js";
 import { TOPICS, AI_DAILY_LIMIT } from "./config.js";
 import { weeklyTopRole, TOP_ROLE } from "./roles.js";
+import { typeSelect, supportPanel, SUPPORT_NAME } from "./tickets.js";
+import { onboardingBody, WELCOME_SCREEN } from "./onboarding.js";
 
 const SEND = 2048n, PUB_THREADS = 34359738368n, PRIV_THREADS = 68719476736n;
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -29,7 +31,7 @@ async function roleByName(h, env, name) {
   return roles.find((r) => r.name === name);
 }
 
-function parisToUtc(y, mo, d, hh, mm) {
+export function parisToUtc(y, mo, d, hh, mm) {
   const guess = Date.UTC(y, mo - 1, d, hh, mm);
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
     .formatToParts(new Date(guess)).map((x) => [x.type, x.value]));
@@ -46,23 +48,6 @@ async function thankFlow(env, h, giver, receiver, reason) {
     allowed_mentions: { users: [receiver.id] },
     embeds: [{ color: h.BOTS.arene.color, description: `🙏 <@${giver.id}> remercie <@${receiver.id}>${reason ? ` pour **${reason}**` : ""}\n**+10 points** · total ${r.total}`, footer: h.FOOTER }],
   } });
-}
-
-async function openTicket(env, h, user, sujet) {
-  const { found } = await findChannel(h, env, (c) => c.name === "🎫・support");
-  if (!found) return "Le salon support n'existe pas encore, l'équipe doit lancer /kx-setup.";
-  const t = await h.discord(env, "POST", `/channels/${found.id}/threads`, { name: `ticket-${who(user)}`.slice(0, 90), type: 12, invitable: false, auto_archive_duration: 10080 });
-  if (!t.ok) return "Impossible d'ouvrir le ticket pour l'instant.";
-  const thread = await t.json();
-  await h.discord(env, "PUT", `/channels/${thread.id}/thread-members/${user.id}`);
-  const equipe = await roleByName(h, env, "Équipe KX");
-  await h.discord(env, "POST", `/channels/${thread.id}/messages`, {
-    content: `<@${user.id}>${equipe ? ` <@&${equipe.id}>` : ""}`,
-    allowed_mentions: { users: [user.id], roles: equipe ? [equipe.id] : [] },
-    embeds: [{ color: h.LILAS, title: "🎫 Ticket ouvert", description: `${sujet ? `**Sujet**: ${sujet}\n\n` : ""}Explique ta demande ici, seuls toi et l'équipe voyez ce fil. Quand c'est réglé, clique sur Fermer.`, footer: h.FOOTER }],
-    components: [{ type: 1, components: [{ type: 2, style: 4, label: "Fermer le ticket", emoji: { name: "🔒" }, custom_id: "ticket:close" }] }],
-  });
-  return `Ton ticket est ouvert ici, <#${thread.id}>`;
 }
 
 // ------------------------------------------------------------ commandes
@@ -170,10 +155,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
   }
 
   // ---------- tickets
-  if (name === "ticket") {
-    ctx.waitUntil((async () => h.followUp(env, i, { content: await openTicket(env, h, user, h.opt(i, "sujet")) }))());
-    return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
-  }
+  if (name === "ticket") return h.reply({ content: "Quel type de demande ?", components: [typeSelect()] }, true);
 
   // ---------- ateliers (événements Discord)
   if (name === "atelier") {
@@ -252,18 +234,6 @@ export async function handleFeaturesComponent(i, env, ctx, h) {
     return h.reply({ content: r.correct ? `✅ Bonne réponse ! **+5 points** (total ${r.total})\n${r.explanation}` : `❌ Raté, c'était **${L[r.answer]}**.\n${r.explanation}` }, true);
   }
 
-  if (id === "ticket:open") {
-    ctx.waitUntil((async () => h.followUp(env, i, { content: await openTicket(env, h, user) }))());
-    return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
-  }
-
-  if (id === "ticket:close") {
-    ctx.waitUntil((async () => {
-      await h.discord(env, "POST", `/channels/${i.channel_id}/messages`, { embeds: [{ color: h.LILAS, description: `🔒 Ticket fermé par <@${user.id}>.` }] });
-      await h.discord(env, "PATCH", `/channels/${i.channel_id}`, { archived: true, locked: true });
-    })());
-    return h.json({ type: 7, data: { components: [] } });
-  }
   return null;
 }
 
@@ -346,53 +316,18 @@ async function runSetup(env, h) {
       });
       await ok(res);
       support = await res.json();
-      await h.discord(env, "POST", `/channels/${support.id}/messages`, {
-        embeds: [{ color: h.VIOLET, title: "🎫 Besoin de l'équipe ?", description: "Question privée, souci sur le serveur, candidature, partenariat… Clique sur le bouton, un fil privé s'ouvre avec l'équipe KX.\nTu peux aussi taper `/ticket` n'importe où.", footer: h.FOOTER }],
-        components: [{ type: 1, components: [{ type: 2, style: 1, label: "Ouvrir un ticket", emoji: { name: "🎫" }, custom_id: "ticket:open" }] }],
-      });
+      await h.discord(env, "POST", `/channels/${support.id}/messages`, supportPanel(h.BOTS.kx.color));
       return "créé";
     }
     return "déjà présent";
   });
 
-  await step("Écran d'accueil", async () => ok(await h.discord(env, "PATCH", `/guilds/${h.GUILD_ID}/welcome-screen`, {
-    enabled: true,
-    description: "La communauté des FDE, automatisation, agents IA et missions clients.",
-    welcome_channels: [
-      { channel_id: C.reglement, description: "Lis les règles", emoji_name: "📜" },
-      { channel_id: C.parcours, description: "Deviens FDE certifié", emoji_name: "🎓" },
-      { channel_id: C.questions, description: "Pose tes questions", emoji_name: "❓" },
-      { channel_id: C.defi, description: "Relève le défi de la semaine", emoji_name: "🏋️" },
-      { channel_id: C.discussion, description: "Viens discuter", emoji_name: "💬" },
-    ],
-  })));
-
+  await step("Écran d'accueil", async () => ok(await h.discord(env, "PATCH", `/guilds/${h.GUILD_ID}/welcome-screen`, WELCOME_SCREEN(C))));
   await step("Accueil guidé (questions à l'arrivée)", async () => {
+    const { chans } = await findChannel(h, env, () => false);
     const roles = await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/roles`)).json();
-    const rid = (n) => roles.find((r) => r.name === n)?.id;
-    let seq = 0n;
-    const sf = () => String((BigInt(Date.now() - 1420070400000) << 22n) | (seq++));
-    const opt = (title, description, emoji, channel_ids, role_ids = []) => ({ id: sf(), title, ...(description ? { description } : {}), emoji_name: emoji, channel_ids, role_ids: role_ids.filter(Boolean) });
-    const body = {
-      enabled: true, mode: 0,
-      default_channel_ids: [C.bienvenue, C.reglement, C.annonces, C.presente_toi, C.discussion, C.veille_ia, C.vos_creations, C.detente, C.questions, C.no_code, C.code, C.idees, C.suggestions, C.parcours, C.defi, C.certifications, C.rendus],
-      prompts: [
-        { id: sf(), type: 0, title: "Qu'est-ce qui t'amène ?", single_select: true, required: true, in_onboarding: true, options: [
-          opt("Apprendre l'automatisation", "Je veux devenir FDE", "🌱", [C.parcours, C.defi, C.rendus, C.questions]),
-          opt("Je fais déjà de l'automatisation", "Freelance, dev, consultant", "🛠️", [C.parcours, C.vos_creations, C.certifications]),
-          opt("Automatiser mon entreprise", "Je veux gagner du temps", "🏢", [C.travailler, C.realisations]),
-        ] },
-        { id: sf(), type: 0, title: "Quelles notifications veux-tu ?", single_select: false, required: false, in_onboarding: true, options: [
-          opt("Lives et ateliers", "Être prévenu des ateliers", "🎓", [C.ateliers], [rid("Notif lives")]),
-          opt("Annonces", "Les nouveautés KX", "📢", [C.annonces], [rid("Notif annonces")]),
-        ] },
-        { id: sf(), type: 0, title: "Tes outils", single_select: false, required: false, in_onboarding: true, options: [
-          opt("n8n", null, "⚙️", [C.no_code]), opt("Make / Zapier", null, "🔗", [C.no_code]),
-          opt("Python / JavaScript", null, "🐍", [C.code]), opt("Agents IA", null, "🤖", [C.veille_ia]),
-        ] },
-      ],
-    };
-    return ok(await h.discord(env, "PUT", `/guilds/${h.GUILD_ID}/onboarding`, body));
+    const extra = chans.filter((c) => c.name === "📖・commandes").map((c) => c.id);
+    return ok(await h.discord(env, "PUT", `/guilds/${h.GUILD_ID}/onboarding`, onboardingBody(C, roles, extra)));
   });
 
   return out;
