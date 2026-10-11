@@ -17,6 +17,44 @@ const GUIDE_NAME = "📖・commandes";
 // Bots externes et le nom qu'ils portent sur le serveur
 const EXTERNAL_BOTS = { "411916947773587456": "K’X Musique" }; // Jockie Music
 
+// Accueil commun dans #bienvenue et salon 🧭・démarrer de l'espace FDE (une dizaine d'appels au plus)
+export async function publierAccueil(env, h, pre = {}) {
+  const out = [];
+  const C = h.CHANNELS, G = h.GUILD_ID, botId = env.DISCORD_APP_ID;
+  const ok = async (res) => { if (res.ok) return res; throw new Error(`${res.status} ${(await res.text()).slice(0, 300)}`); };
+  const get = async (path) => (await ok(await h.discord(env, "GET", path))).json();
+  const upsert = async (channelId, payload, pick) => {
+    const msgs = await get(`/channels/${channelId}/messages?limit=50`);
+    const old = msgs.filter((m) => m.author.id === botId && pick(m));
+    if (old[0] && (await h.discord(env, "PATCH", `/channels/${channelId}/messages/${old[0].id}`, payload)).ok) return "mis à jour";
+    await ok(await h.discord(env, "POST", `/channels/${channelId}/messages`, payload));
+    for (const m of old) await h.discord(env, "DELETE", `/channels/${channelId}/messages/${m.id}`);
+    return old.length ? "nouvelle version publiée" : "publié";
+  };
+  const step = async (label, fn) => { try { out.push(`✅ ${label} · ${await fn()}`); } catch (e) { out.push(`❌ ${label} · ${e.message}`); } };
+  const chans = pre.chans ?? await get(`/guilds/${G}/channels`);
+  const guide = pre.guide ?? chans.find((c) => c.name === GUIDE_NAME);
+  await step("Accueil commun dans #bienvenue", () => upsert(C.bienvenue, accueilV2(), (m) => /"(role|esp):/.test(JSON.stringify(m.components ?? []))));
+  await step("Salon 🧭・démarrer de l'espace FDE", async () => {
+    let dem = chans.find((c) => c.name === "🧭・démarrer");
+    if (!dem) {
+      const roles = await get(`/guilds/${G}/roles`);
+      const fde = roles.find((r) => r.name === ROLE_FDE);
+      const staff = roles.filter((r) => ["Fondateur", "Équipe K’X", "Modérateur", "Animateur", "Mentor"].includes(r.name));
+      dem = await (await ok(await h.discord(env, "POST", `/guilds/${G}/channels`, {
+        name: "🧭・démarrer", type: 0, parent_id: chans.find((c) => c.id === C.discussion)?.parent_id, position: 0, topic: "Le mode d'emploi de l'espace FDE.",
+        permission_overwrites: [
+          { id: G, type: 0, deny: String(1024n | 2048n) },
+          ...(fde ? [{ id: fde.id, type: 0, allow: String(1024n), deny: String(2048n) }] : []),
+          ...staff.map((r) => ({ id: r.id, type: 0, allow: String(1024n) })),
+        ],
+      }))).json();
+    }
+    return `<#${dem.id}> ${await upsert(dem.id, welcomeV2(guide?.id, SELF_ROLES), () => true)}`;
+  });
+  return out;
+}
+
 export async function runPublish(env, h) {
   const out = [];
   const step = async (label, fn) => { try { const r = await fn(); out.push(`${r === false ? "⚠️" : "✅"} ${label}${typeof r === "string" ? ` · ${r}` : ""}`); } catch (e) { out.push(`❌ ${label} · ${e.message}`); } };
@@ -151,26 +189,7 @@ export async function runPublish(env, h) {
 
   // ---------- accueil dans #bienvenue (bannière animée, présentation, boutons)
   if (!cloison) await step("Accueil dans #bienvenue", async () => upsert(C.bienvenue, welcomeV2(guide?.id, SELF_ROLES), (m) => JSON.stringify(m.components ?? []).includes('"role:')));
-  else {
-    await step("Accueil commun dans #bienvenue", async () => upsert(C.bienvenue, accueilV2(), (m) => /"(role|esp):/.test(JSON.stringify(m.components ?? []))));
-    await step("Salon 🧭・démarrer de l'espace FDE", async () => {
-      let dem = chans.find((c) => c.name === "🧭・démarrer");
-      if (!dem) {
-        const roles = await get(`/guilds/${G}/roles`);
-        const fde = roles.find((r) => r.name === ROLE_FDE);
-        const staff = roles.filter((r) => ["Fondateur", "Équipe K’X", "Modérateur", "Animateur", "Mentor"].includes(r.name));
-        dem = await (await ok(await h.discord(env, "POST", `/guilds/${G}/channels`, {
-          name: "🧭・démarrer", type: 0, parent_id: chans.find((c) => c.id === C.discussion)?.parent_id, position: 0, topic: "Le mode d'emploi de l'espace FDE.",
-          permission_overwrites: [
-            { id: G, type: 0, deny: String(1024n | 2048n) },
-            ...(fde ? [{ id: fde.id, type: 0, allow: String(1024n), deny: String(2048n) }] : []),
-            ...staff.map((r) => ({ id: r.id, type: 0, allow: String(1024n) })),
-          ],
-        }))).json();
-      }
-      return `<#${dem.id}> ${await upsert(dem.id, welcomeV2(guide?.id, SELF_ROLES), () => true)}`;
-    });
-  }
+  else for (const l of await publierAccueil(env, h, { chans, guide })) out.push(l);
 
   // ---------- chaque bot peut publier dans ses salons, même verrouillés ou privés
   await step("Salons des bots", async () => {

@@ -56,15 +56,16 @@ export function planTexte(p) {
 }
 
 // ------------------------------------------------------------ application
-export async function appliquerEspaces(env, h) {
-  const G = h.GUILD_ID, out = [];
+// Préparation: sauvegarde, rôles neutres, puis la liste des appels Discord à passer par lots (voir jobs.js).
+// Chaque appel: { m, p, b, l (libellé), c (compteur si réussi), then (opération de base si réussi) }
+export async function prepAppliquer(env, h) {
+  const G = h.GUILD_ID, out = [], q = [];
   const ok = async (res, what) => { if (!res.ok) throw new Error(`${what} ${res.status} ${(await res.text()).slice(0, 200)}`); return res; };
   const p = await planEspaces(env, h);
   let roles = await (await h.discord(env, "GET", `/guilds/${G}/roles`)).json();
   const guild = await (await h.discord(env, "GET", `/guilds/${G}`)).json();
 
-  // 1. sauvegarde pour retour arrière
-  // la sauvegarde n'est jamais écrasée tant que le cloisonnement n'a pas été restauré (reprise après coupure)
+  // 1. sauvegarde pour retour arrière, jamais écrasée tant que le cloisonnement n'a pas été restauré (reprise après coupure)
   const etat = (await store(env, "setting", { key: "espaces" })).value;
   const exist = (await store(env, "setting", { key: "snapshot:espaces" })).value;
   if (!exist || etat === "inactif") {
@@ -74,84 +75,91 @@ export async function appliquerEspaces(env, h) {
   } else out.push("✅ Sauvegarde d'origine conservée (reprise)");
   await store(env, "setting", { key: "espaces", value: "en_cours" });
 
-  // 2. rôles techniques neutres
+  // 2. rôles techniques neutres (l'ancien « Client », au-dessus du bot, est laissé tel quel)
   const neutral = { color: 0, hoist: false, mentionable: false, permissions: "0" };
-  // l'ancien badge « Client » est renommé si le bot en a le droit, sinon un rôle neutre est créé à côté
-  const old = roles.find((r) => r.name === OLD_CLIENT);
-  let renamed = false;
-  if (old && !roles.some((r) => r.name === ROLE_CLIENT)) renamed = (await h.discord(env, "PATCH", `/guilds/${G}/roles/${old.id}`, { name: ROLE_CLIENT, ...neutral })).ok;
-  if (old && !renamed) out.push("⚠️ Le rôle « Client » est au-dessus du bot, renomme-le ou supprime-le toi-même (il n'est plus utilisé)");
-  for (const name of [ROLE_CLIENT, ROLE_FDE]) if (!roles.some((r) => r.name === name) && !(name === ROLE_CLIENT && renamed)) await ok(await h.discord(env, "POST", `/guilds/${G}/roles`, { name, ...neutral }), name);
-  roles = await (await h.discord(env, "GET", `/guilds/${G}/roles`)).json();
+  if (roles.some((r) => r.name === OLD_CLIENT)) out.push("⚠️ L'ancien rôle « Client » est au-dessus du bot, supprime-le toi-même (il ne sert plus)");
+  let cree = false;
+  for (const name of [ROLE_CLIENT, ROLE_FDE]) if (!roles.some((r) => r.name === name)) { await ok(await h.discord(env, "POST", `/guilds/${G}/roles`, { name, ...neutral }), name); cree = true; }
+  if (cree) roles = await (await h.discord(env, "GET", `/guilds/${G}/roles`)).json();
   const rid = (n) => roles.find((r) => r.name === n)?.id;
   const fdeRole = rid(ROLE_FDE), clientRole = rid(ROLE_CLIENT);
   out.push(`✅ Rôles neutres ${ROLE_FDE} et ${ROLE_CLIENT} (sans couleur, ni affichage à part, ni mention)`);
 
   // 3. membres actuels: accès FDE, sauf clients connus
-  const members = await (await h.discord(env, "GET", `/guilds/${G}/members?limit=1000`)).json();
-  let n = 0;
+  const mres = await h.discord(env, "GET", `/guilds/${G}/members?limit=1000`);
+  const members = mres.ok ? await mres.json() : [];
+  if (!mres.ok) out.push(`⚠️ Liste des membres ${mres.status}`);
   for (const m of members) {
     if (m.user.bot || m.roles.includes(fdeRole)) continue;
     const st = await statutOf(env, m.user.id);
     if (st === STATUTS.client || st === STATUTS.client_qualif || st === STATUTS.conflit) continue;
-    if ((await h.discord(env, "PUT", `/guilds/${G}/members/${m.user.id}/roles/${fdeRole}`)).ok) { n++; if (st === STATUTS.aucun) await setStatut(env, m.user.id, STATUTS.fde); }
+    q.push({ m: "PUT", p: `/guilds/${G}/members/${m.user.id}/roles/${fdeRole}`, l: "accès membre", c: "membres",
+      ...(st === STATUTS.aucun ? { then: { s: "statutSet", a: { user: m.user.id, statut: STATUTS.fde } } } : {}) });
   }
-  out.push(`✅ Accès FDE donné à ${n} membre${n > 1 ? "s" : ""} actuel${n > 1 ? "s" : ""}`);
 
   // 4. espace FDE: @everyone ne voit plus, le rôle FDE et l'équipe voient
   const staffIds = FDE_STAFF.map(rid).filter(Boolean);
-  let f = 0;
   for (const c of p.fde) {
     const ows = c.permission_overwrites ?? [];
-    const every = ows.find((o) => o.id === G) ?? { id: G, type: 0, allow: "0", deny: "0" };
-    await ok(await h.discord(env, "PUT", `/channels/${c.id}/permissions/${G}`, { type: 0, allow: String(BigInt(every.allow) & ~B.VIEW), deny: String(BigInt(every.deny) | B.VIEW) }), `#${c.name}`);
-    const lecture = c.id === h.CHANNELS.annonces ? String(B.SEND | B.REACT | B.PUB_THREADS | B.PRIV_THREADS | B.SEND_THREADS) : "0";
-    await ok(await h.discord(env, "PUT", `/channels/${c.id}/permissions/${fdeRole}`, { type: 0, allow: String(B.VIEW | (c.type === 2 ? B.CONNECT : 0n)), deny: lecture }), `#${c.name}`);
+    const every = ows.find((o) => o.id === G) ?? { allow: "0", deny: "0" };
+    // l'équipe et le rôle FDE d'abord, @everyone en dernier: personne ne perd l'accès en cours de route
     for (const s of staffIds) {
       const cur = ows.find((o) => o.id === s);
-      await h.discord(env, "PUT", `/channels/${c.id}/permissions/${s}`, { type: 0, allow: String(BigInt(cur?.allow ?? 0) | B.VIEW | (c.type === 2 ? B.CONNECT : 0n)), deny: String(BigInt(cur?.deny ?? 0) & ~B.VIEW) });
+      q.push({ m: "PUT", p: `/channels/${c.id}/permissions/${s}`, l: `#${c.name}`, b: { type: 0, allow: String(BigInt(cur?.allow ?? 0) | B.VIEW | (c.type === 2 ? B.CONNECT : 0n)), deny: String(BigInt(cur?.deny ?? 0) & ~B.VIEW) } });
     }
-    f++;
+    const lecture = c.id === h.CHANNELS.annonces ? String(B.SEND | B.REACT | B.PUB_THREADS | B.PRIV_THREADS | B.SEND_THREADS) : "0";
+    q.push({ m: "PUT", p: `/channels/${c.id}/permissions/${fdeRole}`, l: `#${c.name}`, b: { type: 0, allow: String(B.VIEW | (c.type === 2 ? B.CONNECT : 0n)), deny: lecture } });
+    q.push({ m: "PUT", p: `/channels/${c.id}/permissions/${G}`, l: `#${c.name}`, c: "salons", b: { type: 0, allow: String(BigInt(every.allow) & ~B.VIEW), deny: String(BigInt(every.deny) | B.VIEW) } });
   }
-  out.push(`✅ Espace FDE, ${f} salons et catégories réservés`);
 
   // 5. accueil: lecture seule, masqué aux membres déjà orientés (pas d'annuaire commun)
   for (const c of p.accueil) {
-    for (const r of [fdeRole, clientRole]) await ok(await h.discord(env, "PUT", `/channels/${c.id}/permissions/${r}`, { type: 0, allow: "0", deny: String(B.VIEW) }), `#${c.name}`);
+    for (const r of [fdeRole, clientRole]) q.push({ m: "PUT", p: `/channels/${c.id}/permissions/${r}`, l: `#${c.name}`, b: { type: 0, allow: "0", deny: String(B.VIEW) } });
     const every = (c.permission_overwrites ?? []).find((o) => o.id === G) ?? { allow: "0", deny: "0" };
-    await ok(await h.discord(env, "PUT", `/channels/${c.id}/permissions/${G}`, { type: 0, allow: String((BigInt(every.allow) | B.VIEW | B.HISTORY) & ~(B.SEND | B.REACT)), deny: String((BigInt(every.deny) | B.SEND | B.REACT | B.PUB_THREADS | B.PRIV_THREADS | B.SEND_THREADS) & ~B.VIEW) }), `#${c.name}`);
+    q.push({ m: "PUT", p: `/channels/${c.id}/permissions/${G}`, l: `#${c.name}`, b: { type: 0, allow: String((BigInt(every.allow) | B.VIEW | B.HISTORY) & ~(B.SEND | B.REACT)), deny: String((BigInt(every.deny) | B.SEND | B.REACT | B.PUB_THREADS | B.PRIV_THREADS | B.SEND_THREADS) & ~B.VIEW) } });
   }
-  out.push("✅ Accueil minimal en lecture seule, invisible une fois orienté");
 
   // 6. arrivée: plus de questions Discord ni de message nominatif
-  await h.discord(env, "PUT", `/guilds/${G}/onboarding`, { enabled: false, mode: 0, prompts: [], default_channel_ids: [] }).then((r) => out.push(r.ok ? "✅ Arrivée guidée Discord désactivée" : `⚠️ Arrivée guidée ${r.status}`));
-  await h.discord(env, "PATCH", `/guilds/${G}`, { system_channel_flags: (guild.system_channel_flags ?? 0) | 1 | 8 }).then((r) => out.push(r.ok ? "✅ Messages d'arrivée nominatifs coupés" : `⚠️ Messages d'arrivée ${r.status}`));
-  await h.discord(env, "PATCH", `/guilds/${G}/welcome-screen`, { enabled: true, description: "Bienvenue chez K’X Automatisation. Choisis ton espace dans le salon de bienvenue.", welcome_channels: [
+  q.push({ m: "PUT", p: `/guilds/${G}/onboarding`, l: "Arrivée guidée Discord", b: { enabled: false, mode: 0, prompts: [], default_channel_ids: [] } });
+  q.push({ m: "PATCH", p: `/guilds/${G}`, l: "Messages d'arrivée nominatifs", b: { system_channel_flags: (guild.system_channel_flags ?? 0) | 1 | 8 } });
+  q.push({ m: "PATCH", p: `/guilds/${G}/welcome-screen`, l: "Écran de bienvenue", b: { enabled: true, description: "Bienvenue chez K’X Automatisation. Choisis ton espace dans le salon de bienvenue.", welcome_channels: [
     { channel_id: h.CHANNELS.bienvenue, description: "Choisir mon espace", emoji_name: "👋" },
     { channel_id: h.CHANNELS.reglement, description: "Lire les règles", emoji_name: "📜" },
-  ] });
-  await store(env, "setting", { key: "espaces", value: "actif" });
-  return out;
+  ] } });
+  q.push({ s: "setting", a: { key: "espaces", value: "actif" } });
+  return { out, queue: q, fde: p.fde.length };
+}
+
+export function bilanAppliquer(job) {
+  const n = job.count?.membres ?? 0;
+  return [
+    `✅ Accès FDE donné à ${n} membre${n > 1 ? "s" : ""} actuel${n > 1 ? "s" : ""}`,
+    `✅ Espace FDE, ${job.count?.salons ?? 0}/${job.fde} salons et catégories réservés`,
+    "✅ Accueil minimal en lecture seule, invisible une fois orienté",
+    "✅ Arrivée guidée Discord désactivée, messages d'arrivée nominatifs coupés",
+  ];
 }
 
 // ------------------------------------------------------------ retour arrière
-export async function restaurerEspaces(env, h) {
+export async function prepRestaurer(env, h) {
   const raw = (await store(env, "setting", { key: "snapshot:espaces" })).value;
-  if (!raw) return ["⚠️ Aucune sauvegarde trouvée"];
+  if (!raw) return { out: ["⚠️ Aucune sauvegarde trouvée"], queue: [] };
   const snap = JSON.parse(raw);
   const chans = await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/channels`)).json();
+  const q = [];
   let n = 0;
   for (const s of snap.channels) {
     const c = chans.find((x) => x.id === s.id);
     if (!c) continue;
     const keep = new Set(s.overwrites.map((o) => o.id));
-    for (const o of c.permission_overwrites ?? []) if (!keep.has(o.id)) await h.discord(env, "DELETE", `/channels/${c.id}/permissions/${o.id}`);
-    for (const o of s.overwrites) await h.discord(env, "PUT", `/channels/${c.id}/permissions/${o.id}`, { type: o.type, allow: o.allow, deny: o.deny });
+    // les droits d'origine d'abord, les ajouts retirés ensuite
+    for (const o of s.overwrites) q.push({ m: "PUT", p: `/channels/${c.id}/permissions/${o.id}`, l: `#${c.name}`, b: { type: o.type, allow: o.allow, deny: o.deny } });
+    for (const o of c.permission_overwrites ?? []) if (!keep.has(o.id)) q.push({ m: "DELETE", p: `/channels/${c.id}/permissions/${o.id}`, l: `#${c.name}` });
     n++;
   }
-  await h.discord(env, "PATCH", `/guilds/${h.GUILD_ID}`, { system_channel_flags: snap.system_channel_flags ?? 0 });
-  await store(env, "setting", { key: "espaces", value: "inactif" });
-  return [`✅ Droits de ${n} salons remis comme au ${snap.at}`, "ℹ️ Les rôles neutres et les dossiers clients créés depuis restent en place, sans effet sur l'ancien fonctionnement. Relance /kx-publier pour remettre l'arrivée guidée."];
+  q.push({ m: "PATCH", p: `/guilds/${h.GUILD_ID}`, l: "Messages d'arrivée", b: { system_channel_flags: snap.system_channel_flags ?? 0 } });
+  q.push({ s: "setting", a: { key: "espaces", value: "inactif" } });
+  return { out: [`✅ Droits de ${n} salons remis comme au ${snap.at}`, "ℹ️ Les rôles neutres et les dossiers clients restent en place, sans effet sur l'ancien fonctionnement. Relance /kx-publier pour remettre l'arrivée guidée."], queue: q };
 }
 
 // ------------------------------------------------------------ choix d'espace à l'arrivée

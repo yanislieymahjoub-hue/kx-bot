@@ -7,11 +7,12 @@ import { store } from "./store.js";
 import { handleTicketComponent, handleTicketModal, rdvReminders } from "./tickets.js";
 import { parisToUtc } from "./features.js";
 import { syncInvites } from "./invites.js";
-import { planEspaces, planTexte, appliquerEspaces, restaurerEspaces, rejoindreFde, demandeClientModal, demandeClient, decisionClient, commandeAutorisee, setStatut, STATUTS, ROLE_FDE, ROLE_CLIENT, creerDossierClient, isCoord } from "./espaces.js";
+import { planEspaces, planTexte, rejoindreFde, demandeClientModal, demandeClient, decisionClient, commandeAutorisee, setStatut, STATUTS, ROLE_FDE, ROLE_CLIENT, creerDossierClient, isCoord } from "./espaces.js";
 import { BOTS, tokenOf, publicKeyOf, botByPath } from "./bots.js";
 import { tourStep, tourLoading, TOUR, V2, botCard, INTRO_CMD } from "./guide.js";
 export { KXStore } from "./store.js";
 import { setJobRunner } from "./store.js";
+import { etapeTravail } from "./jobs.js";
 
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
@@ -425,19 +426,7 @@ export default {
 };
 
 // exécution des travaux longs par l'alarme du Durable Object
-setJobRunner(async (env, job) => {
-  let lines;
-  try {
-    if (job.kind === "espaces-appliquer") {
-      lines = await appliquerEspaces(env, helpers);
-      lines.push(...(await runPublish(env, helpers)).filter((l) => /bienvenue|démarrer|❌|⚠️/.test(l)));
-    } else if (job.kind === "espaces-restaurer") lines = await restaurerEspaces(env, helpers);
-    else return;
-  } catch (e) { lines = [`❌ ${e.message}`]; }
-  const text = lines.join("\n").slice(0, 1990);
-  const r = await fetch(`${API}/webhooks/${job.app}/${job.token}/messages/@original`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: text }) });
-  return `${text}\n(message ${r.status})`;
-});
+setJobRunner((env, job) => etapeTravail(env, helpers, job));
 
 // outils partagés avec fde.js
 const helpers = { BOTS, json, reply, discord, followUp, opt, isStaff, ask, VIOLET, LILAS, AMBRE, FOOTER, EPHEMERAL, GUILD_ID, CHANNELS, LADDER, MENTOR_ROLE, DEFI_PROMPT, AI_SYSTEM };
