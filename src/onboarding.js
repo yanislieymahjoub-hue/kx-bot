@@ -60,7 +60,11 @@ export function onboardingBody(C, roles, extraDefault = []) {
         opt("Confirmé", "J'en fais mon métier ou presque", "🚀", ["parcours", "rendus"]),
         opt("Expert", "Je peux former et accompagner les autres", "🏅", ["parcours", "rendus"]),
       ]),
-      prompt("Ton profil", true, true, [
+      prompt("Tes compétences en automatisation et IA", false, false,
+        SKILLS.filter(([, , g]) => g === "auto").map(([n, e]) => opt(n, null, e, ["no_code"], [n]))),
+      prompt("Tes compétences techniques", false, false,
+        SKILLS.filter(([, , g]) => g === "tech").map(([n, e]) => opt(n, null, e, ["code"], [n]))),
+      prompt("Ton profil", true, false, [
         opt("Étudiant", null, "🎒", ["presente_toi"]),
         opt("Alternant", null, "🔁", ["presente_toi"]),
         opt("Salarié", null, "💼", ["presente_toi"]),
@@ -69,10 +73,6 @@ export function onboardingBody(C, roles, extraDefault = []) {
         opt("En reconversion", null, "🔄", ["presente_toi", "parcours"]),
         opt("Autre", null, "✨", ["presente_toi"]),
       ]),
-      prompt("Tes compétences en automatisation et IA", false, false,
-        SKILLS.filter(([, , g]) => g === "auto").map(([n, e]) => opt(n, null, e, ["no_code"], [n]))),
-      prompt("Tes compétences techniques", false, false,
-        SKILLS.filter(([, , g]) => g === "tech").map(([n, e]) => opt(n, null, e, ["code"], [n]))),
     ],
   };
 }
