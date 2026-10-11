@@ -27,6 +27,10 @@ export const setStatut = (env, user, statut, ref) => store(env, "statutSet", { u
 export async function planEspaces(env, h) {
   const G = h.GUILD_ID, C = h.CHANNELS;
   const chans = await (await h.discord(env, "GET", `/guilds/${G}/channels`)).json();
+  // reprise: un salon passé privé par une application interrompue est classé selon ses droits d'origine
+  const raw = (await store(env, "setting", { key: "snapshot:espaces" }).catch(() => ({}))).value;
+  const orig = new Map(raw ? JSON.parse(raw).channels.map((c) => [c.id, c.overwrites]) : []);
+  const isPrivate = (c, G) => (orig.get(c.id) ?? c.permission_overwrites ?? []).some((o) => o.id === G && has(o.deny, B.VIEW));
   const staffCat = chans.find((c) => c.id === C.staff)?.parent_id;
   const accueil = [C.bienvenue, C.reglement];
   const fde = [], prives = [], intacts = [];
@@ -85,7 +89,9 @@ export async function prepAppliquer(env, h) {
   const fdeRole = rid(ROLE_FDE), clientRole = rid(ROLE_CLIENT);
   out.push(`✅ Rôles neutres ${ROLE_FDE} et ${ROLE_CLIENT} (sans couleur, ni affichage à part, ni mention)`);
 
-  // 3. membres actuels: accès FDE, sauf clients connus
+  // 3. arrivée guidée Discord coupée d'abord: tant qu'elle est active, Discord exige un salon visible de tous
+  q.push({ m: "PUT", p: `/guilds/${G}/onboarding`, l: "Arrivée guidée Discord", b: { enabled: false, mode: 0, prompts: [], default_channel_ids: [] } });
+  // 3 bis. membres actuels: accès FDE, sauf clients connus
   const mres = await h.discord(env, "GET", `/guilds/${G}/members?limit=1000`);
   const members = mres.ok ? await mres.json() : [];
   if (!mres.ok) out.push(`⚠️ Liste des membres ${mres.status}`);
@@ -119,8 +125,6 @@ export async function prepAppliquer(env, h) {
     q.push({ m: "PUT", p: `/channels/${c.id}/permissions/${G}`, l: `#${c.name}`, b: { type: 0, allow: String((BigInt(every.allow) | B.VIEW | B.HISTORY) & ~(B.SEND | B.REACT)), deny: String((BigInt(every.deny) | B.SEND | B.REACT | B.PUB_THREADS | B.PRIV_THREADS | B.SEND_THREADS) & ~B.VIEW) } });
   }
 
-  // 6. arrivée: plus de questions Discord ni de message nominatif
-  q.push({ m: "PUT", p: `/guilds/${G}/onboarding`, l: "Arrivée guidée Discord", b: { enabled: false, mode: 0, prompts: [], default_channel_ids: [] } });
   q.push({ m: "PATCH", p: `/guilds/${G}`, l: "Messages d'arrivée nominatifs", b: { system_channel_flags: (guild.system_channel_flags ?? 0) | 1 | 8 } });
   q.push({ m: "PATCH", p: `/guilds/${G}/welcome-screen`, l: "Écran de bienvenue", b: { enabled: true, description: "Bienvenue chez K’X Automatisation. Choisis ton espace dans le salon de bienvenue.", welcome_channels: [
     { channel_id: h.CHANNELS.bienvenue, description: "Choisir mon espace", emoji_name: "👋" },
