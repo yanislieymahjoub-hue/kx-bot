@@ -6,7 +6,7 @@ import { runPublish } from "./publish.js";
 import { handleTicketComponent, handleTicketModal, rdvReminders } from "./tickets.js";
 import { parisToUtc } from "./features.js";
 import { BOTS, tokenOf, publicKeyOf, botByPath } from "./bots.js";
-import { tourStep, tourLoading, TOUR, V2 } from "./guide.js";
+import { tourStep, tourLoading, TOUR, V2, botCard, INTRO_CMD } from "./guide.js";
 export { KXStore } from "./store.js";
 
 const API = "https://discord.com/api/v10";
@@ -187,6 +187,14 @@ async function handleCommand(interaction, env, ctx) {
       embeds: [{ title: "Choisis tes notifications", description: "Clique pour ajouter ou retirer un rôle. Tu peux changer quand tu veux.", color: LILAS, footer: FOOTER }],
       components: [{ type: 1, components: SELF_ROLES.map(([label, emoji]) => ({ type: 2, style: 2, label, emoji: { name: emoji }, custom_id: `role:${label}` })) }],
     });
+  }
+
+  if (INTRO_CMD[name]) {
+    const k = INTRO_CMD[name];
+    const res = await fetch(`${API}/applications/${interaction.application_id}/guilds/${GUILD_ID}/commands`, { headers: { Authorization: `Bot ${tokenOf(env, k) || env.DISCORD_BOT_TOKEN}` } }).catch(() => null);
+    const ids = {};
+    if (res?.ok) for (const c of await res.json()) ids[c.name] = c.id;
+    return json({ type: 4, data: botCard(k, ids) });
   }
 
   if (name === "kx-publier") {

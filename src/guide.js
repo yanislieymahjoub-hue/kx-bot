@@ -116,7 +116,7 @@ export function guideV2(ephemeral = false) {
     components: [
       box(BOTS.kx.color, [
         gallery(asset("banners/equipe.gif"), "L'équipe des bots K’X"),
-        text("## Le guide des commandes\nTape **/** dans n'importe quel salon, choisis une commande et remplis les cases.\n-# 🔒 la réponse n'est visible que par toi"),
+        text("## Le guide des commandes\nTape **/** dans n'importe quel salon, choisis une commande et remplis les cases. Chaque bot se présente avec sa commande, `/kx-bot`, `/kx-ia`, `/kx-academie`, `/kx-missions`, `/kx-arene` et `/kx-veille`, et ses commandes sont cliquables.\n-# 🔒 la réponse n'est visible que par toi"),
       ]),
       ...Object.entries(DOCS).map(([k, [role, lines]]) => box(BOTS[k].color, [
         section(`### ${BOTS[k].name}\n-# ${role}`, asset(`bots/${BOTS[k].logo}.png`)),
@@ -189,3 +189,18 @@ export function tourLoading(k) {
 }
 
 export { TOUR };
+
+// Carte de présentation d'un bot, commandes cliquables (</nom:id>)
+export const INTRO_CMD = { "kx-bot": "kx", "kx-ia": "ia", "kx-academie": "academie", "kx-missions": "missions", "kx-arene": "arene", "kx-veille": "veille" };
+export function botCard(k, ids) {
+  const [role, lines] = DOCS[k];
+  const link = (t) => t.replace(/`\/([a-z-]+)`/g, (m, n) => (ids[n] ? `</${n}:${ids[n]}>` : m));
+  return {
+    flags: V2 | 64,
+    components: [box(BOTS[k].color, [
+      section(`-# ${role.toUpperCase()}\n## Salut, moi c'est ${BOTS[k].name}\n${BOTS[k].about}`, asset(`bots/${BOTS[k].logo}.png`)),
+      sep(1),
+      text(`### Ce que je sais faire\n${lines.map(link).join("\n")}\n\n-# Clique sur une commande pour la lancer, ou tape-la directement avec /`),
+    ])],
+  };
+}

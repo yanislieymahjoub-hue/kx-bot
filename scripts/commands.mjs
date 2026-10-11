@@ -118,6 +118,14 @@ export const COMMANDS = [
   { name: "kx-setup", description: "(Admin) Configurer salons, forums, support, accueil", default_member_permissions: "8" },
   { name: "kx-publier", description: "(Admin) Logo, mode d'emploi d'accueil, guide des commandes, invitations", default_member_permissions: "8" },
 
+  // Présentation de chaque bot et de ses commandes cliquables
+  { name: "kx-bot", description: "K’X Bot se présente, avec toutes ses commandes" },
+  { name: "kx-ia", description: "K’X IA se présente, avec toutes ses commandes" },
+  { name: "kx-academie", description: "K’X Académie se présente, avec toutes ses commandes" },
+  { name: "kx-missions", description: "K’X Missions se présente, avec toutes ses commandes" },
+  { name: "kx-arene", description: "K’X Arène se présente, avec toutes ses commandes" },
+  { name: "kx-veille", description: "K’X Veille se présente, avec toutes ses commandes" },
+
   // Menus clic droit (Applications)
   { type: 3, name: "Résumer avec l'IA" },
   { type: 3, name: "Expliquer avec l'IA" },
