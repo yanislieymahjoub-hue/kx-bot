@@ -112,9 +112,19 @@ export async function runPublish(env, h) {
   // ---------- écran d'arrivée: questions, rôles et salons
   await step("Écran d'arrivée", async () => {
     const roles = await get(`/guilds/${G}/roles`);
-    await ok(await h.discord(env, "PUT", `/guilds/${G}/onboarding`, onboardingBody(C, roles, guide ? [guide.id] : [])));
+    // Discord limite le nombre de questions à l'arrivée: on garde les premières, les autres passent dans « Salons et rôles »
+    const body = onboardingBody(C, roles, guide ? [guide.id] : []);
+    let shown = body.prompts.length, res;
+    for (;;) {
+      body.prompts.forEach((p, k) => { p.in_onboarding = k < shown; });
+      res = await h.discord(env, "PUT", `/guilds/${G}/onboarding`, body);
+      if (res.ok || shown <= 1 || !(await res.clone().text()).includes("TOO_MANY_ONBOARDING_PROMPTS")) break;
+      shown--;
+    }
+    await ok(res);
     await ok(await h.discord(env, "PATCH", `/guilds/${G}/welcome-screen`, WELCOME_SCREEN(C)));
-    return "5 questions à l'arrivée";
+    return `${shown} questions à l'arrivée${shown < body.prompts.length ? `, ${body.prompts.length - shown} dans Salons et rôles` : ""}`;
+
   });
 
   // ---------- tickets: panneau de choix et salon vocal des entretiens
