@@ -153,7 +153,10 @@ export class KXStore {
     this.setting({ key: "job", value: "" });
     const self = this;
     const STORE = { idFromName: () => "kx", get: () => ({ fetch: async (_u, o) => self.fetch(new Request("https://store/", o)) }) };
-    try { await jobRunner({ ...this.env, STORE }, JSON.parse(raw)); } catch (e) { console.log("Travail échoué", e.message); }
+    const job = JSON.parse(raw);
+    this.setting({ key: "job_status", value: `${job.kind} démarré ${new Date().toISOString()}` });
+    try { const r = await jobRunner({ ...this.env, STORE }, job); this.setting({ key: "job_status", value: `${job.kind} terminé ${new Date().toISOString()}\n${r ?? ""}` }); }
+    catch (e) { this.setting({ key: "job_status", value: `${job.kind} échoué ${e.message}` }); }
   }
 
   async fetch(request) {

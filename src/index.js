@@ -395,7 +395,13 @@ async function veille(env) {
 // ------------------------------------------------------------ point d'entrée
 export default {
   async fetch(request, env, ctx) {
-    const bot = botByPath(new URL(request.url).pathname);
+    const url = new URL(request.url);
+    // état des travaux longs (aucune donnée sensible)
+    if (url.pathname === "/etat-travaux") {
+      const st = await store(env, "setting", { key: "job_status" }), es = await store(env, "setting", { key: "espaces" });
+      return new Response(`espaces ${es.value ?? "?"}\n${st.value ?? "aucun travail"}`);
+    }
+    const bot = botByPath(url.pathname);
     if (!bot) return new Response("Introuvable", { status: 404 });
     if (request.method === "GET") return new Response(`${BOTS[bot].name} en ligne`);
     if (request.method !== "POST") return new Response("Méthode non autorisée", { status: 405 });
@@ -428,7 +434,9 @@ setJobRunner(async (env, job) => {
     } else if (job.kind === "espaces-restaurer") lines = await restaurerEspaces(env, helpers);
     else return;
   } catch (e) { lines = [`❌ ${e.message}`]; }
-  await fetch(`${API}/webhooks/${job.app}/${job.token}/messages/@original`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: lines.join("\n").slice(0, 1990) }) });
+  const text = lines.join("\n").slice(0, 1990);
+  const r = await fetch(`${API}/webhooks/${job.app}/${job.token}/messages/@original`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: text }) });
+  return `${text}\n(message ${r.status})`;
 });
 
 // outils partagés avec fde.js
