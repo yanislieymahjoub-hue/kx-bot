@@ -13,6 +13,9 @@ export class KXStore {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, owner TEXT UNIQUE, seen INTEGER DEFAULT 0)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS invite_awards (owner TEXT, week TEXT, n INTEGER, PRIMARY KEY (owner, week))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS statut (user TEXT PRIMARY KEY, statut TEXT, ref TEXT, updated INTEGER)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS dossier (ref TEXT PRIMARY KEY, kind TEXT, user TEXT, data TEXT)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS journal (ts INTEGER, quoi TEXT, ref TEXT, par TEXT, cible TEXT, detail TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS rdv (thread TEXT, owner TEXT, ts INTEGER, reminded INTEGER DEFAULT 0, PRIMARY KEY (thread, ts))`);
   }
 
@@ -74,6 +77,24 @@ export class KXStore {
       thanks: this.rows(`SELECT COUNT(*) AS n FROM thanks`)[0].n,
     };
   }
+
+  // statut privé client / FDE (jamais exposé en annuaire)
+  statutGet({ user }) { const r = this.rows(`SELECT statut, ref FROM statut WHERE user = ?`, user)[0]; return r ?? { statut: null }; }
+  statutSet({ user, statut, ref = null }) {
+    this.sql.exec(`INSERT OR REPLACE INTO statut (user, statut, ref, updated) VALUES (?, ?, ?, ?)`, user, statut, ref, Date.now());
+    this.journal({ quoi: `statut ${statut}`, ref, cible: user });
+    return { ok: true };
+  }
+  // dossiers clients et espaces de mission (référence neutre)
+  dossierSet(d) { this.sql.exec(`INSERT OR REPLACE INTO dossier (ref, kind, user, data) VALUES (?, ?, ?, ?)`, d.ref, d.kind, d.user ?? null, JSON.stringify(d)); return { ok: true }; }
+  dossierGet({ ref }) { const r = this.rows(`SELECT data FROM dossier WHERE ref = ?`, ref)[0]; return r ? JSON.parse(r.data) : null; }
+  dossierOf({ user, kind }) { const r = this.rows(`SELECT data FROM dossier WHERE user = ? AND kind = ? ORDER BY rowid DESC`, user, kind)[0]; return r ? JSON.parse(r.data) : null; }
+  dossiers({ kind }) { return this.rows(`SELECT data FROM dossier WHERE kind = ?`, kind).map((r) => JSON.parse(r.data)); }
+  journal({ quoi, ref = null, par = null, cible = null, detail = null }) {
+    this.sql.exec(`INSERT INTO journal (ts, quoi, ref, par, cible, detail) VALUES (?, ?, ?, ?, ?, ?)`, Date.now(), quoi, ref, par, cible, detail);
+    return { ok: true };
+  }
+  journalRef({ ref }) { return this.rows(`SELECT ts, quoi, par, cible, detail FROM journal WHERE ref = ? ORDER BY ts`, ref); }
 
   // liens d'invitation personnels et points de parrainage
   inviteGet({ owner }) { return { code: this.rows(`SELECT code FROM invites WHERE owner = ?`, owner)[0]?.code ?? null }; }

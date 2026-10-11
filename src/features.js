@@ -326,8 +326,9 @@ async function runSetup(env, h) {
     return "déjà présent";
   });
 
-  await step("Écran d'accueil", async () => ok(await h.discord(env, "PATCH", `/guilds/${h.GUILD_ID}/welcome-screen`, WELCOME_SCREEN(C))));
-  await step("Accueil guidé (questions à l'arrivée)", async () => {
+  const cloison = (await store(env, "setting", { key: "espaces" }).catch(() => ({}))).value === "actif";
+  if (!cloison) await step("Écran d'accueil", async () => ok(await h.discord(env, "PATCH", `/guilds/${h.GUILD_ID}/welcome-screen`, WELCOME_SCREEN(C))));
+  if (!cloison) await step("Accueil guidé (questions à l'arrivée)", async () => {
     const { chans } = await findChannel(h, env, () => false);
     const roles = await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/roles`)).json();
     const extra = chans.filter((c) => c.name === "📖・commandes").map((c) => c.id);

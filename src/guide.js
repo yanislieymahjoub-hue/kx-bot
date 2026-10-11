@@ -205,3 +205,27 @@ export function botCard(k, ids) {
     ])],
   };
 }
+
+// Accueil minimal commun, une fois le serveur cloisonné: aucun annuaire, deux portes d'entrée
+export function accueilV2() {
+  return {
+    flags: V2,
+    components: [box(BOTS.kx.color, [
+      section([
+        "-# K’X AUTOMATISATION",
+        "## Bienvenue",
+        "K’X aide les entreprises à gagner du temps grâce à l'automatisation et à l'IA, avec un réseau de FDE (Forward Deployed Engineers, les ingénieurs qui déploient l'IA chez le client).",
+      ].join("\n"), asset("bots/bot.png")),
+      sep(1),
+      text([
+        "### Choisis ton espace",
+        "**Communauté FDE** pour apprendre, s'entraîner, rejoindre le réseau et accéder aux missions.",
+        "**Entreprise** pour parler de votre projet. Un espace privé s'ouvre, visible par vous et l'équipe K’X uniquement.",
+        "",
+        `-# Lis d'abord le <#${C.reglement}>. Chaque espace est séparé, la coordination K’X fait le lien.`,
+      ].join("\n")),
+      row(btn("Je rejoins la communauté FDE", "esp:fde", 1, "🎓"), btn("Je représente une entreprise", "esp:client", 2, "🏢")),
+      row(link("Site K’X", SITE, "🌐")),
+    ])],
+  };
+}

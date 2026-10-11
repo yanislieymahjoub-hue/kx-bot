@@ -23,7 +23,10 @@ export const COMMANDS = [
     options: [
       { type: 3, name: "titre", description: "Titre", required: true, max_length: 250 },
       { type: 3, name: "texte", description: "Contenu (\\n pour un retour à la ligne)", required: true, max_length: 3000 },
-      { type: 5, name: "ping", description: "Prévenir le rôle Notif annonces", required: false },
+      { type: 5, name: "ping", description: "Prévenir le rôle Notif annonces (espace FDE)", required: false },
+      { type: 3, name: "public", description: "Espace concerné (FDE par défaut)", required: false, choices: [
+        { name: "Espace FDE", value: "fde" }, { name: "Clients (une copie dans chaque dossier)", value: "clients" }, { name: "Les deux, copies séparées", value: "tous" },
+      ] },
     ],
   },
   { name: "kx-roles", description: "(Équipe) Poster le panneau de rôles", default_member_permissions: MANAGE_MESSAGES },
@@ -118,6 +121,23 @@ export const COMMANDS = [
   { name: "veille", description: "Les dernières actus IA (visible par toi seul)" },
   { name: "kx-setup", description: "(Admin) Configurer salons, forums, support, accueil", default_member_permissions: "8" },
   { name: "kx-publier", description: "(Admin) Logo, mode d'emploi d'accueil, guide des commandes, invitations", default_member_permissions: "8" },
+
+  // Cloisonnement Clients / FDE
+  {
+    name: "kx-espaces", description: "(Admin) Cloisonnement Clients / FDE, plan, application ou retour arrière", default_member_permissions: "8",
+    options: [{ type: 3, name: "mode", description: "Action", required: true, choices: [
+      { name: "Voir le plan", value: "plan" }, { name: "Appliquer (avec sauvegarde)", value: "appliquer" }, { name: "Restaurer la sauvegarde", value: "restaurer" },
+    ] }],
+  },
+  {
+    name: "kx-statut", description: "(Coordination) Fixer le statut privé d'un membre, après arbitrage", default_member_permissions: MANAGE_ROLES,
+    options: [
+      { type: 6, name: "membre", description: "Membre", required: true },
+      { type: 3, name: "statut", description: "Statut", required: true, choices: [
+        { name: "FDE", value: "fde" }, { name: "Client", value: "client" }, { name: "Aucun (accueil seulement)", value: "aucun" },
+      ] },
+    ],
+  },
 
   // Présentation de chaque bot et de ses commandes cliquables
   { name: "kx-bot", description: "K’X Bot se présente, avec toutes ses commandes" },

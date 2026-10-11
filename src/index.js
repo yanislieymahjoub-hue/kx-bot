@@ -3,9 +3,11 @@ import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM
 import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
 import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLeaderboard, buildInPublic } from "./features.js";
 import { runPublish } from "./publish.js";
+import { store } from "./store.js";
 import { handleTicketComponent, handleTicketModal, rdvReminders } from "./tickets.js";
 import { parisToUtc } from "./features.js";
 import { syncInvites } from "./invites.js";
+import { planEspaces, planTexte, appliquerEspaces, restaurerEspaces, rejoindreFde, demandeClientModal, demandeClient, decisionClient, commandeAutorisee, setStatut, STATUTS, ROLE_FDE, ROLE_CLIENT, creerDossierClient, isCoord } from "./espaces.js";
 import { BOTS, tokenOf, publicKeyOf, botByPath } from "./bots.js";
 import { tourStep, tourLoading, TOUR, V2, botCard, INTRO_CMD } from "./guide.js";
 export { KXStore } from "./store.js";
@@ -82,6 +84,42 @@ async function ask(env, messages, max_tokens = 1200) {
 async function handleCommand(interaction, env, ctx) {
   const name = interaction.data.name;
   const user = interaction.member?.user ?? interaction.user;
+  if (!(await commandeAutorisee(interaction, env, name))) return reply({ content: "Cette commande n'est pas disponible dans ton espace." }, true);
+
+  if (name === "kx-espaces") {
+    if (!isCoord(interaction) || (BigInt(interaction.member.permissions) & 8n) !== 8n) return reply({ content: "Réservé aux administrateurs." }, true);
+    const mode = opt(interaction, "mode");
+    ctx.waitUntil((async () => {
+      let lines;
+      try {
+        lines = mode === "plan" ? [planTexte(await planEspaces(env, helpers))] : mode === "appliquer" ? await appliquerEspaces(env, helpers) : await restaurerEspaces(env, helpers);
+        if (mode === "appliquer") lines.push(...(await runPublish(env, helpers)).filter((l) => /bienvenue|démarrer|❌|⚠️/.test(l)));
+      } catch (e) { lines = [`❌ ${e.message}`]; }
+      await followUp(env, interaction, { content: lines.join("\n").slice(0, 1990) });
+    })());
+    return json({ type: 5, data: { flags: EPHEMERAL } });
+  }
+
+  if (name === "kx-statut") {
+    if (!isCoord(interaction)) return reply({ content: "Réservé à la coordination." }, true);
+    const target = opt(interaction, "membre"), statut = opt(interaction, "statut");
+    ctx.waitUntil((async () => {
+      const roles = await (await discord(env, "GET", `/guilds/${GUILD_ID}/roles`)).json();
+      const id = (n) => roles.find((r) => r.name === n)?.id;
+      const set = async (n, on) => id(n) && discord(env, on ? "PUT" : "DELETE", `/guilds/${GUILD_ID}/members/${target}/roles/${id(n)}`);
+      await set(ROLE_FDE, statut === "fde");
+      await set(ROLE_CLIENT, statut === "client");
+      let extra = "";
+      if (statut === "client") {
+        const d = await store(env, "dossierOf", { user: target, kind: "client" }).catch(() => null);
+        if (!d) { const n = await creerDossierClient(env, helpers, target); extra = ` Dossier ${n.ref} créé, <#${n.suivi.id}>.`; await store(env, "dossierSet", { ...(await store(env, "dossierGet", { ref: n.ref })), etat: "actif" }); }
+      }
+      await setStatut(env, target, statut === "aucun" ? STATUTS.aucun : statut);
+      await store(env, "journal", { quoi: `arbitrage ${statut}`, par: user.id, cible: target });
+      await followUp(env, interaction, { content: `Statut de <@${target}> fixé à **${statut}**.${extra}` });
+    })());
+    return json({ type: 5, data: { flags: EPHEMERAL } });
+  }
 
   if (name === "kx") {
     return reply({
@@ -166,8 +204,14 @@ async function handleCommand(interaction, env, ctx) {
 
   if (name === "annonce") {
     if (!isStaff(interaction)) return reply({ content: "Commande réservée à l'équipe." }, true);
-    const ping = opt(interaction, "ping");
+    const ping = opt(interaction, "ping"), cible = opt(interaction, "public") ?? "fde";
     ctx.waitUntil((async () => {
+      const embed = { title: opt(interaction, "titre"), description: String(opt(interaction, "texte")).replace(/\\n/g, "\n"), color: AMBRE, footer: FOOTER, timestamp: new Date().toISOString() };
+      if (cible !== "fde") {
+        // copies indépendantes dans chaque dossier client, sans mention ni lien entre eux
+        for (const d of await store(env, "dossiers", { kind: "client" })) if (d.etat === "actif" && d.annonces) await discord(env, "POST", `/channels/${d.annonces}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } });
+        if (cible === "clients") return;
+      }
       let content;
       if (ping) {
         const roles = await (await discord(env, "GET", `/guilds/${GUILD_ID}/roles`)).json();
@@ -179,7 +223,7 @@ async function handleCommand(interaction, env, ctx) {
         embeds: [{ title: opt(interaction, "titre"), description: String(opt(interaction, "texte")).replace(/\\n/g, "\n"), color: AMBRE, footer: FOOTER, timestamp: new Date().toISOString() }],
       });
     })());
-    return reply({ content: "Annonce publiée." }, true);
+    return reply({ content: "Annonce en cours de publication." }, true);
   }
 
   if (name === "kx-roles") {
@@ -260,6 +304,9 @@ async function handleComponent(interaction, env, ctx) {
     return inTour ? json({ type: 7, data: v2only(tourStep(n, 0)) }) : json({ type: 4, data: tourLoading(1) });
   }
   if (id === "open:candidature") return handleFde("candidature", interaction, env, ctx, helpers);
+  if (id === "esp:fde") return rejoindreFde(interaction, env, helpers);
+  if (id === "esp:client") return json(demandeClientModal());
+  if (id.startsWith("client:")) return decisionClient(interaction, env, ctx, helpers);
   const ticket = await handleTicketComponent(interaction, env, ctx, helpers);
   if (ticket) return ticket;
   if (id.startsWith("role:")) {
@@ -281,6 +328,7 @@ async function handleComponent(interaction, env, ctx) {
 }
 
 async function handleModal(interaction, env, ctx) {
+  if (interaction.data.custom_id === "client-modal") return demandeClient(interaction, env, ctx, helpers);
   const ticket = await handleTicketModal(interaction, env, ctx, helpers, parisToUtc);
   if (ticket) return ticket;
   if (interaction.data.custom_id !== "contact-modal") {

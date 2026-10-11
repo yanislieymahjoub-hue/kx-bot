@@ -1,6 +1,7 @@
 // /kx-publier: logo du bot et du serveur, mode d'emploi dans #bienvenue, salon 📖・commandes, invitations réservées
 import { LOGO_DATA_URI } from "./logo.js";
-import { guideV2, welcomeV2 } from "./guide.js";
+import { guideV2, welcomeV2, accueilV2 } from "./guide.js";
+import { ROLE_FDE } from "./espaces.js";
 import { BOTS, BOT_PERMISSIONS } from "./bots.js";
 import { ensureRoles } from "./roles.js";
 import { onboardingBody, WELCOME_SCREEN } from "./onboarding.js";
@@ -110,7 +111,8 @@ export async function runPublish(env, h) {
   });
 
   // ---------- écran d'arrivée: questions, rôles et salons
-  await step("Écran d'arrivée", async () => {
+  const cloison = (await store(env, "setting", { key: "espaces" }).catch(() => ({}))).value === "actif";
+  if (!cloison) await step("Écran d'arrivée", async () => {
     const roles = await get(`/guilds/${G}/roles`);
     // Discord limite le nombre de questions à l'arrivée: on garde les premières, les autres passent dans « Salons et rôles »
     const body = onboardingBody(C, roles, guide ? [guide.id] : []);
@@ -148,7 +150,27 @@ export async function runPublish(env, h) {
   });
 
   // ---------- accueil dans #bienvenue (bannière animée, présentation, boutons)
-  await step("Accueil dans #bienvenue", async () => upsert(C.bienvenue, welcomeV2(guide?.id, SELF_ROLES), (m) => JSON.stringify(m.components ?? []).includes('"role:')));
+  if (!cloison) await step("Accueil dans #bienvenue", async () => upsert(C.bienvenue, welcomeV2(guide?.id, SELF_ROLES), (m) => JSON.stringify(m.components ?? []).includes('"role:')));
+  else {
+    await step("Accueil commun dans #bienvenue", async () => upsert(C.bienvenue, accueilV2(), (m) => /"(role|esp):/.test(JSON.stringify(m.components ?? []))));
+    await step("Salon 🧭・démarrer de l'espace FDE", async () => {
+      let dem = chans.find((c) => c.name === "🧭・démarrer");
+      if (!dem) {
+        const roles = await get(`/guilds/${G}/roles`);
+        const fde = roles.find((r) => r.name === ROLE_FDE);
+        const staff = roles.filter((r) => ["Fondateur", "Équipe K’X", "Modérateur", "Animateur", "Mentor"].includes(r.name));
+        dem = await (await ok(await h.discord(env, "POST", `/guilds/${G}/channels`, {
+          name: "🧭・démarrer", type: 0, parent_id: chans.find((c) => c.id === C.discussion)?.parent_id, position: 0, topic: "Le mode d'emploi de l'espace FDE.",
+          permission_overwrites: [
+            { id: G, type: 0, deny: String(1024n | 2048n) },
+            ...(fde ? [{ id: fde.id, type: 0, allow: String(1024n), deny: String(2048n) }] : []),
+            ...staff.map((r) => ({ id: r.id, type: 0, allow: String(1024n) })),
+          ],
+        }))).json();
+      }
+      return `<#${dem.id}> ${await upsert(dem.id, welcomeV2(guide?.id, SELF_ROLES), () => true)}`;
+    });
+  }
 
   // ---------- chaque bot peut publier dans ses salons, même verrouillés ou privés
   await step("Salons des bots", async () => {
