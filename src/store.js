@@ -11,6 +11,8 @@ export class KXStore {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS quiz_try (id TEXT, user TEXT, PRIMARY KEY (id, user))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS ai_usage (user TEXT, day TEXT, n INTEGER, PRIMARY KEY (user, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, owner TEXT UNIQUE, seen INTEGER DEFAULT 0)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS invite_awards (owner TEXT, week TEXT, n INTEGER, PRIMARY KEY (owner, week))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS rdv (thread TEXT, owner TEXT, ts INTEGER, reminded INTEGER DEFAULT 0, PRIMARY KEY (thread, ts))`);
   }
 
@@ -72,6 +74,28 @@ export class KXStore {
       thanks: this.rows(`SELECT COUNT(*) AS n FROM thanks`)[0].n,
     };
   }
+
+  // liens d'invitation personnels et points de parrainage
+  inviteGet({ owner }) { return { code: this.rows(`SELECT code FROM invites WHERE owner = ?`, owner)[0]?.code ?? null }; }
+  inviteSet({ owner, code, uses = 0 }) { this.sql.exec(`INSERT OR REPLACE INTO invites (code, owner, seen) VALUES (?, ?, ?)`, code, owner, uses); return { ok: true }; }
+  inviteSync({ counts, week, cap, pts }) {
+    // counts: { code: uses } ; ne compte que les nouvelles utilisations, plafonné par semaine
+    const awarded = [];
+    for (const r of this.rows(`SELECT code, owner, seen FROM invites`)) {
+      const uses = counts[r.code];
+      if (uses === undefined || uses <= r.seen) continue;
+      this.sql.exec(`UPDATE invites SET seen = ? WHERE code = ?`, uses, r.code);
+      const done = this.rows(`SELECT n FROM invite_awards WHERE owner = ? AND week = ?`, r.owner, week)[0]?.n ?? 0;
+      const n = Math.min(uses - r.seen, Math.max(0, cap - done));
+      if (!n) continue;
+      this.sql.exec(`INSERT INTO invite_awards (owner, week, n) VALUES (?, ?, ?) ON CONFLICT(owner, week) DO UPDATE SET n = n + excluded.n`, r.owner, week, n);
+      const t = this.add({ user: r.owner, pts: n * pts, reason: `invitation x${n}` });
+      awarded.push({ owner: r.owner, n, total: t.total });
+    }
+    return awarded;
+  }
+  inviteWeek({ owner, week }) { return { n: this.rows(`SELECT n FROM invite_awards WHERE owner = ? AND week = ?`, owner, week)[0]?.n ?? 0 }; }
+  inviteTop({ week }) { return this.rows(`SELECT owner, n FROM invite_awards WHERE week = ? ORDER BY n DESC LIMIT 3`, week); }
 
   // appels vocaux confirmés dans les tickets
   rdvSave({ thread, owner, ts }) {

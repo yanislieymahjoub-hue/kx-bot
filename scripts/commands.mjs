@@ -114,6 +114,7 @@ export const COMMANDS = [
     ],
   },
   { name: "stats", description: "La communauté K’X en chiffres" },
+  { name: "inviter", description: "Ton lien d'invitation personnel, +20 points par personne qui arrive (5 par semaine)" },
   { name: "veille", description: "Les dernières actus IA (visible par toi seul)" },
   { name: "kx-setup", description: "(Admin) Configurer salons, forums, support, accueil", default_member_permissions: "8" },
   { name: "kx-publier", description: "(Admin) Logo, mode d'emploi d'accueil, guide des commandes, invitations", default_member_permissions: "8" },

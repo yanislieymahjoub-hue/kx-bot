@@ -2,6 +2,7 @@
 import { store } from "./store.js";
 import { TOPICS, AI_DAILY_LIMIT } from "./config.js";
 import { weeklyTopRole, TOP_ROLE } from "./roles.js";
+import { inviteCommand, topInviters } from "./invites.js";
 import { typeSelect, supportPanel, SUPPORT_NAME } from "./tickets.js";
 import { onboardingBody, WELCOME_SCREEN } from "./onboarding.js";
 
@@ -62,6 +63,8 @@ export async function handleFeatures(name, i, env, ctx, h) {
     return thankFlow(env, h, user, i.data.resolved.users[id], h.opt(i, "raison"));
   }
   if (name === "Remercier l'auteur") return thankFlow(env, h, user, resolvedMsg.author, "ce message");
+
+  if (name === "inviter") return inviteCommand(i, env, ctx, h);
 
   if (name === "classement") {
     const week = h.opt(i, "periode") !== "total";
@@ -255,11 +258,12 @@ export async function handleFeaturesModal(i, env, ctx, h) {
 // ------------------------------------------------------------ crons hebdo
 export async function weeklyLeaderboard(env, h) {
   const top = await store(env, "top", { n: 5, days: 7 });
+  const recruteurs = await topInviters(env);
   await weeklyTopRole(env, h, top[0]?.user);
   if (!top.length) return;
   await h.discord(env, "POST", `/channels/${h.CHANNELS.discussion}/messages`, {
     allowed_mentions: { users: top.map((r) => r.user) },
-    embeds: [{ color: h.BOTS.arene.color, title: "🏆 Les contributeurs de la semaine", description: top.map((r, k) => `${MEDALS[k] ?? `**${k + 1}.**`} <@${r.user}> · ${r.total} pts`).join("\n") + `\n\n<@${top[0].user}> porte le rôle **${TOP_ROLE}** jusqu'à dimanche prochain.` + "\n\nMerci à vous ! Remerciez ceux qui vous aident avec `/merci` ou clic droit sur un message → Applications → Remercier l'auteur.", footer: h.FOOTER }],
+    embeds: [{ color: h.BOTS.arene.color, title: "🏆 Les contributeurs de la semaine", description: top.map((r, k) => `${MEDALS[k] ?? `**${k + 1}.**`} <@${r.user}> · ${r.total} pts`).join("\n") + `\n\n<@${top[0].user}> porte le rôle **${TOP_ROLE}** jusqu'à dimanche prochain.` + (recruteurs.length ? `\n\n🤝 **Meilleurs parrains** · ${recruteurs.map((r) => `<@${r.owner}> (${r.n})`).join(" · ")}` : "") + "\n\nMerci à vous ! Remerciez ceux qui vous aident avec `/merci` ou clic droit sur un message → Applications → Remercier l'auteur.", footer: h.FOOTER }],
   }, "arene");
 }
 

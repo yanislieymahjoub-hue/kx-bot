@@ -44,7 +44,7 @@ export function welcomeV2(commandesId, selfRoles) {
         `Six bots K’X t'accompagnent, chacun avec sa couleur. Leurs commandes sont expliquées dans ${commandesId ? `<#${commandesId}>` : "`/aide`"}.`,
         "",
         "-# 04 · LES POINTS",
-        "Aider quelqu'un, réussir un quiz ou briller sur un défi rapporte des points. Le classement tombe chaque dimanche à 18h.",
+        "Aider quelqu'un, réussir un quiz, briller sur un défi ou inviter quelqu'un avec `/inviter` rapporte des points. Le classement tombe chaque dimanche à 18h.",
         "",
         "-# 05 · L'ÉQUIPE",
         "`/ticket` ouvre un fil privé avec nous. Pour automatiser ton entreprise, utilise `/contact`.",
@@ -98,6 +98,7 @@ const DOCS = {
   arene: ["Points, quiz et classement", [
     "`/quiz` Une question FDE sur le thème de ton choix, +5 points si tu trouves",
     "`/merci` Remercie un membre, il gagne 10 points",
+    "`/inviter` Ton lien d'invitation personnel, +20 points par personne qui arrive, jusqu'à 5 par semaine",
     "**Clic droit sur un message → Applications → Remercier l'auteur** fait pareil",
     "`/classement` Le top de la semaine ou le classement général",
     "`/stats` La communauté en chiffres",

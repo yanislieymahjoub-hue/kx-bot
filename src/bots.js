@@ -32,7 +32,7 @@ export const BOTS = {
     name: "K’X Arène", path: "/arene", color: 0xf43f5e, logo: "arene",
     id: "1558565038594334830", publicKey: "fa96d4983a3a8ad4eb6a3d39490c4c40f668bedfd0fdfd498dc1bbdb38405a17",
     about: "Points, quiz et classement de la communauté K’X.",
-    commands: ["merci", "classement", "points", "quiz", "stats", "Remercier l'auteur", "kx-arene"],
+    commands: ["merci", "inviter", "classement", "points", "quiz", "stats", "Remercier l'auteur", "kx-arene"],
     channels: ["discussion"],
   },
   veille: {

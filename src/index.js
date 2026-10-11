@@ -5,6 +5,7 @@ import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLea
 import { runPublish } from "./publish.js";
 import { handleTicketComponent, handleTicketModal, rdvReminders } from "./tickets.js";
 import { parisToUtc } from "./features.js";
+import { syncInvites } from "./invites.js";
 import { BOTS, tokenOf, publicKeyOf, botByPath } from "./bots.js";
 import { tourStep, tourLoading, TOUR, V2, botCard, INTRO_CMD } from "./guide.js";
 export { KXStore } from "./store.js";
@@ -366,7 +367,7 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === "0 7 * * MON") ctx.waitUntil(Promise.all([postDefi(env, helpers), buildInPublic(env, helpers)]));
     else if (event.cron === "0 16 * * SUN") ctx.waitUntil(weeklyLeaderboard(env, helpers));
-    else ctx.waitUntil(Promise.all([veille(env), rdvReminders(env, helpers)]));
+    else ctx.waitUntil(Promise.all([veille(env), rdvReminders(env, helpers), syncInvites(env, helpers)]));
   },
 };
 
