@@ -11,10 +11,10 @@ import { store } from "./store.js";
 const INVITE = 1n;
 const SEND = 2048n, PUB_THREADS = 1n << 35n, PRIV_THREADS = 1n << 36n, SEND_IN_THREADS = 1n << 38n;
 // Rôles qui peuvent inviter (les administrateurs le peuvent toujours)
-export const INVITE_ROLES = ["Fondateur", "Équipe KX", "Mentor"];
+export const INVITE_ROLES = ["Fondateur", "Équipe K’X", "Mentor"];
 const GUIDE_NAME = "📖・commandes";
 // Bots externes et le nom qu'ils portent sur le serveur
-const EXTERNAL_BOTS = { "411916947773587456": "KX Musique" }; // Jockie Music
+const EXTERNAL_BOTS = { "411916947773587456": "K’X Musique" }; // Jockie Music
 
 export async function runPublish(env, h) {
   const out = [];
@@ -49,18 +49,20 @@ export async function runPublish(env, h) {
     await step("Avatar du bot", async () => { await ok(await h.discord(env, "PATCH", "/users/@me", { avatar: LOGO_DATA_URI })); });
     await step("Profil de l'application", async () => { await ok(await h.discord(env, "PATCH", "/applications/@me", {
       icon: LOGO_DATA_URI,
-      description: "L'assistant de la communauté KX Automatisation. IA, parcours FDE, défis, points et tickets. Tape /aide pour tout voir.",
+      description: "L'assistant de la communauté K’X Automatisation. IA, parcours FDE, défis, points et tickets. Tape /aide pour tout voir.",
     })); });
     await step("Icône et description du serveur", async () => {
       await ok(await h.discord(env, "PATCH", `/guilds/${G}`, {
         icon: LOGO_DATA_URI,
-        description: "La communauté des FDE (ingénieurs qui déploient l'IA chez le client). Automatisation, agents IA et missions clients, par KX Automatisation.",
+        name: "K’X Automatisation",
+      description: "La communauté des FDE (ingénieurs qui déploient l'IA chez le client). Automatisation, agents IA et missions clients, par K’X Automatisation.",
       }));
     });
     if (out.slice(before).every((l) => l.startsWith("✅"))) await store(env, "setting", { key: "logo", value: logoHash }).catch(() => {});
   }
   let chans = await get(`/guilds/${G}/channels`);
   const guild = await get(`/guilds/${G}`);
+  if (guild.name !== "K’X Automatisation") await step("Nom du serveur", async () => { await ok(await h.discord(env, "PATCH", `/guilds/${G}`, { name: "K’X Automatisation", description: "La communauté des FDE (ingénieurs qui déploient l'IA chez le client). Automatisation, agents IA et missions clients, par K’X Automatisation." })); return "K’X Automatisation"; });
   // Discord ne laisse pas un bot changer le salon des règles, on le signale seulement
   if (guild.rules_channel_id !== C.reglement) out.push("⚠️ Salon des règles · à régler dans Paramètres du serveur, Communauté, Vue d'ensemble");
 
@@ -84,7 +86,7 @@ export async function runPublish(env, h) {
     let created = false;
     if (!guide) {
       guide = await (await ok(await h.discord(env, "POST", `/guilds/${G}/channels`, {
-        name: GUIDE_NAME, type: 0, parent_id: parent, topic: "Toutes les commandes du KX Bot, expliquées.",
+        name: GUIDE_NAME, type: 0, parent_id: parent, topic: "Toutes les commandes du K’X Bot, expliquées.",
         permission_overwrites: [{ id: G, type: 0, deny: String(SEND | PUB_THREADS | PRIV_THREADS | SEND_IN_THREADS) }],
       }))).json();
       chans = [...chans, guide];
@@ -105,7 +107,7 @@ export async function runPublish(env, h) {
     const roles = await get(`/guilds/${G}/roles`);
     await ok(await h.discord(env, "PUT", `/guilds/${G}/onboarding`, onboardingBody(C, roles, guide ? [guide.id] : [])));
     await ok(await h.discord(env, "PATCH", `/guilds/${G}/welcome-screen`, WELCOME_SCREEN(C)));
-    return "5 questions, compétences et notifications";
+    return "6 questions, compétences et notifications";
   });
 
   // ---------- tickets: panneau de choix et salon vocal des entretiens
@@ -145,7 +147,7 @@ export async function runPublish(env, h) {
     return [done.length ? `réglés pour ${done.join(", ")}` : "", absent.length ? `pas encore sur le serveur ${absent.join(", ")}` : ""].filter(Boolean).join(", ");
   });
 
-  // ---------- bots externes renommés aux couleurs de KX
+  // ---------- bots externes renommés aux couleurs de K’X
   await step("Surnoms des bots externes", async () => {
     const done = [];
     for (const [id, nick] of Object.entries(EXTERNAL_BOTS)) {

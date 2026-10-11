@@ -1,4 +1,4 @@
-// Réglages du KX Bot. Tout se modifie ici.
+// Réglages du K’X Bot. Tout se modifie ici.
 
 export const GUILD_ID = "1558481384601813183";
 
@@ -33,9 +33,9 @@ export const CHANNELS = {
 
 // Sujets affichés en haut de chaque salon (appliqués par /kx-setup)
 export const TOPICS = {
-  bienvenue: "Bienvenue chez KX. Commence ici, puis choisis tes notifications.",
+  bienvenue: "Bienvenue chez K’X. Commence ici, puis choisis tes notifications.",
   reglement: "Les règles du serveur, à lire avant tout.",
-  annonces: "Les nouvelles de KX et de la communauté.",
+  annonces: "Les nouvelles de K’X et de la communauté.",
   presente_toi: "Dis-nous qui tu es et ce que tu automatises.",
   discussion: "Discussion libre entre membres. /ia pour poser une question à l'IA.",
   veille_ia: "Actus IA et automatisation, publiées automatiquement chaque heure.",
@@ -44,9 +44,9 @@ export const TOPICS = {
   no_code: "n8n, Make, Zapier, entraide et astuces.",
   code: "Python, JavaScript, API et scripts.",
   idees: "Des idées de process à automatiser.",
-  realisations: "Automatisations livrées par KX, présentées de façon anonymisée.",
+  realisations: "Automatisations livrées par K’X, présentées de façon anonymisée.",
   ateliers: "Dates des ateliers et lives. Prends le rôle Notif lives pour être prévenu.",
-  travailler: "Faire automatiser ton entreprise par KX, /contact ou /rdv.",
+  travailler: "Faire automatiser ton entreprise par K’X, /contact ou /rdv.",
   suggestions: "Propose une idée avec /suggestion, la communauté vote.",
   parcours: "Le parcours FDE (Forward Deployed Engineer, l'ingénieur qui déploie l'IA chez le client). Apprenti, En formation, FDE Certifié. /candidature pour commencer.",
   defi: "Un défi d'automatisation chaque lundi à 9h. Rendus dans le forum des rendus.",
@@ -86,7 +86,7 @@ export const RSS_FEEDS = [
 // Modèle IA Cloudflare Workers AI (Qwen 3)
 export const AI_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 
-export const AI_SYSTEM = `Tu es l'assistant du serveur Discord de KX Automatisation, une entreprise française qui automatise les tâches répétitives des entreprises (n8n, Make, Python, Excel/VBA, agents IA).
+export const AI_SYSTEM = `Tu es l'assistant du serveur Discord de K’X Automatisation, une entreprise française qui automatise les tâches répétitives des entreprises (n8n, Make, Python, Excel/VBA, agents IA).
 Réponds en français, en tutoyant, de façon claire, courte et concrète (10 lignes maximum). Donne des étapes quand c'est utile.
 Si la question demande une prestation sur mesure, propose la commande /contact ou /rdv.
 Ne promets jamais de prix ni de délai. Si tu ne sais pas, dis-le.

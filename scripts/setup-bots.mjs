@@ -1,5 +1,5 @@
-// Configure chaque bot de l'équipe KX à partir de son jeton (lancé par GitHub Actions après le déploiement):
-// description, logo, adresse des interactions, commandes. Un bot sans jeton ou pas encore invité laisse ses commandes à KX Bot.
+// Configure chaque bot de l'équipe K’X à partir de son jeton (lancé par GitHub Actions après le déploiement):
+// description, logo, adresse des interactions, commandes. Un bot sans jeton ou pas encore invité laisse ses commandes à K’X Bot.
 // Aucun jeton n'est jamais affiché.
 import fs from "node:fs";
 import { BOTS, BOT_PERMISSIONS } from "../src/bots.js";
@@ -21,12 +21,12 @@ const invite = (id) => `https://discord.com/oauth2/authorize?client_id=${id}&sco
 const ready = {};
 for (const [k, b] of Object.entries(BOTS)) {
   const token = tokenOf(k);
-  if (!token) { console.log(`· ${b.name}: pas de jeton (secret DISCORD_TOKEN_${k.toUpperCase()}), commandes gardées par KX Bot`); continue; }
+  if (!token) { console.log(`· ${b.name}: pas de jeton (secret DISCORD_TOKEN_${k.toUpperCase()}), commandes gardées par K’X Bot`); continue; }
   const app = await call(token, "GET", "/applications/@me");
   if (!app.ok) { console.log(`✗ ${b.name}: jeton refusé (${app.status})`); continue; }
   if (b.id && app.data.id !== b.id) { console.log(`✗ ${b.name}: ce jeton appartient à une autre application (${app.data.name}), vérifie le secret`); continue; }
 
-  // profil de l'application (KX Bot garde son adresse et son logo actuels)
+  // profil de l'application (K’X Bot garde son adresse et son logo actuels)
   if (k !== "kx") {
     const patch = {
       description: b.about,
@@ -43,6 +43,13 @@ for (const [k, b] of Object.entries(BOTS)) {
     }
   }
 
+  // nom affiché du bot (marque K’X)
+  const meName = await call(token, "GET", "/users/@me");
+  if (meName.ok && meName.data.username !== b.name) {
+    const u = await call(token, "PATCH", "/users/@me", { username: b.name });
+    console.log(`${u.ok ? "✓" : "✗"} ${b.name}: nom${u.ok ? "" : ` (${u.status} ${JSON.stringify(u.data).slice(0, 160)})`}`);
+  }
+
   const guilds = await call(token, "GET", "/users/@me/guilds");
   if (!guilds.ok || !guilds.data.some((g) => g.id === GUILD_ID)) {
     console.log(`· ${b.name}: pas encore sur le serveur, lien d'invitation ${invite(app.data.id)}`);
@@ -51,13 +58,13 @@ for (const [k, b] of Object.entries(BOTS)) {
   ready[k] = { token, id: app.data.id };
 }
 
-if (!ready.kx) { console.log("KX Bot indisponible, commandes non enregistrées"); process.exit(1); }
+if (!ready.kx) { console.log("K’X Bot indisponible, commandes non enregistrées"); process.exit(1); }
 
 // répartition des commandes
 const owner = {};
 for (const [k, b] of Object.entries(BOTS)) for (const name of b.commands) owner[name] = ready[k] ? k : "kx";
 const missing = COMMANDS.filter((c) => !owner[c.name]).map((c) => c.name);
-if (missing.length) console.log("Commandes sans bot (ajoutées à KX Bot):", missing.join(", "));
+if (missing.length) console.log("Commandes sans bot (ajoutées à K’X Bot):", missing.join(", "));
 for (const c of COMMANDS) owner[c.name] ??= "kx";
 
 let failed = false;
@@ -67,7 +74,7 @@ for (const [k, r] of Object.entries(ready)) {
   console.log(`${res.ok ? "✓" : "✗"} ${BOTS[k].name}: ${list.length} commandes${res.ok ? "" : ` (${res.status} ${JSON.stringify(res.data).slice(0, 300)})`}`);
   if (!res.ok) failed = true;
 }
-// rôles du serveur et droits de chaque bot dans ses salons (avec le jeton de KX Bot)
+// rôles du serveur et droits de chaque bot dans ses salons (avec le jeton de K’X Bot)
 const kx = ready.kx;
 const h = {
   GUILD_ID,

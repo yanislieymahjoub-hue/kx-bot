@@ -1,4 +1,4 @@
-// KX Bot, version Cloudflare Worker (interactions HTTP Discord + IA Workers AI)
+// K’X Bot, version Cloudflare Worker (interactions HTTP Discord + IA Workers AI)
 import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM, LADDER, MENTOR_ROLE, DEFI_PROMPT } from "./config.js";
 import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
 import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLeaderboard, buildInPublic } from "./features.js";
@@ -12,7 +12,7 @@ export { KXStore } from "./store.js";
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
 const EPHEMERAL = 64;
-const FOOTER = { text: "KX Automatisation · kxautomatisation.fr" };
+const FOOTER = { text: "K’X Automatisation · kxautomatisation.fr" };
 
 // ------------------------------------------------------------ utilitaires
 const json = (data, status = 200) =>
@@ -35,7 +35,7 @@ async function verify(request, body, publicKey) {
   return crypto.subtle.verify("Ed25519", key, hexToBytes(sig), new TextEncoder().encode(ts + body));
 }
 
-// Appel à l'API Discord avec le jeton d'un bot de l'équipe (KX Bot par défaut, et en secours si l'autre n'a pas accès)
+// Appel à l'API Discord avec le jeton d'un bot de l'équipe (K’X Bot par défaut, et en secours si l'autre n'a pas accès)
 async function discord(env, method, path, body, as = "kx") {
   const call = (token) => fetch(API + path, {
     method,
@@ -85,7 +85,7 @@ async function handleCommand(interaction, env, ctx) {
   if (name === "kx") {
     return reply({
       embeds: [{
-        title: "KX Automatisation", url: "https://kxautomatisation.fr", color: VIOLET, footer: FOOTER,
+        title: "K’X Automatisation", url: "https://kxautomatisation.fr", color: VIOLET, footer: FOOTER,
         description:
           "On fait gagner du temps aux entreprises, de l'artisan au groupe.\n\n" +
           "**1.** Échange découverte gratuit de 30 à 40 min\n" +
@@ -110,7 +110,7 @@ async function handleCommand(interaction, env, ctx) {
         { role: "user", content: question },
       ]);
       await followUp(env, interaction, {
-        embeds: [{ color: BOTS.ia.color, author: { name: `${user.global_name ?? user.username} demande` }, title: question.slice(0, 250), description: answer || "Je n'ai pas réussi à répondre, réessaie dans un instant.", footer: { text: "Réponse générée par l'IA de KX · à vérifier" } }],
+        embeds: [{ color: BOTS.ia.color, author: { name: `${user.global_name ?? user.username} demande` }, title: question.slice(0, 250), description: answer || "Je n'ai pas réussi à répondre, réessaie dans un instant.", footer: { text: "Réponse générée par l'IA de K’X · à vérifier" } }],
       });
     })());
     return json({ type: 5 });
@@ -138,7 +138,7 @@ async function handleCommand(interaction, env, ctx) {
     return json({
       type: 9,
       data: {
-        custom_id: "contact-modal", title: "Parler de ton projet avec KX",
+        custom_id: "contact-modal", title: "Parler de ton projet avec K’X",
         components: [
           { type: 1, components: [{ type: 4, custom_id: "nom", label: "Ton prénom", style: 1, max_length: 60, required: true }] },
           { type: 1, components: [{ type: 4, custom_id: "entreprise", label: "Entreprise et secteur", style: 1, max_length: 100, required: true }] },
@@ -198,7 +198,7 @@ async function handleCommand(interaction, env, ctx) {
   if (name === "veille") {
     ctx.waitUntil((async () => {
       const items = (await latestNews(6)).map((it) => `**[${it.title.slice(0, 120)}](${it.link})**\n*${it.source}*${it.date ? ` · <t:${Math.floor(it.date / 1000)}:R>` : ""}`);
-      await followUp(env, interaction, { embeds: [{ color: BOTS.veille.color, title: "Les dernières actus IA", description: items.join("\n\n") || "Aucune actu récupérée pour l'instant, réessaie plus tard.", footer: { text: "KX Veille · publiée aussi chaque heure dans le salon veille" } }] });
+      await followUp(env, interaction, { embeds: [{ color: BOTS.veille.color, title: "Les dernières actus IA", description: items.join("\n\n") || "Aucune actu récupérée pour l'instant, réessaie plus tard.", footer: { text: "K’X Veille · publiée aussi chaque heure dans le salon veille" } }] });
     })());
     return json({ type: 5, data: { flags: EPHEMERAL } });
   }
@@ -296,7 +296,7 @@ async function handleModal(interaction, env, ctx) {
       ? fetch(env.CT_WEBHOOK_URL, { method: "POST", headers: { "content-type": "application/json", "x-kx-secret": env.CT_WEBHOOK_SECRET ?? "" }, body: JSON.stringify({ source: "discord", discord_id: user.id, ...f }) })
       : Promise.resolve(),
   ]));
-  return reply({ content: "Merci, ta demande est bien arrivée. L'équipe KX revient vers toi rapidement." }, true);
+  return reply({ content: "Merci, ta demande est bien arrivée. L'équipe K’X revient vers toi rapidement." }, true);
 }
 
 // ------------------------------------------------------------ veille IA (cron)

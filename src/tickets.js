@@ -4,16 +4,16 @@ import { V2 } from "./guide.js";
 
 export const SUPPORT_NAME = "🎫・support";
 export const VOICE_NAME = "🎙️・entretiens";
-export const STAFF_ROLES = ["Fondateur", "Équipe KX", "Mentor", "Modérateur", "Animateur"];
+export const STAFF_ROLES = ["Fondateur", "Équipe K’X", "Mentor", "Modérateur", "Animateur"];
 const VOICE = 1024n | 1048576n | 2097152n | 512n | 33554432n; // voir, se connecter, parler, vidéo, détection de voix
 
 // [clé, emoji, libellé, description, appel vocal ?]
 export const TICKET_TYPES = [
   ["candidature", "🎓", "Candidature au parcours FDE", "Entrer dans le parcours, entretien en vocal avec l'équipe", true],
   ["certification", "🏅", "Entretien de certification FDE", "Tu penses être prêt, on en parle en vocal", true],
-  ["projet", "💼", "Projet ou automatisation d'entreprise", "Faire automatiser ton activité par KX", true],
+  ["projet", "💼", "Projet ou automatisation d'entreprise", "Faire automatiser ton activité par K’X", true],
   ["aide", "❓", "Question ou aide", "Une question privée pour l'équipe", false],
-  ["partenariat", "🤝", "Partenariat", "Collaborer avec KX ou la communauté", true],
+  ["partenariat", "🤝", "Partenariat", "Collaborer avec K’X ou la communauté", true],
   ["signalement", "⚠️", "Signalement", "Un souci avec un membre ou un message", false],
 ];
 const TYPE = Object.fromEntries(TICKET_TYPES.map((t) => [t[0], t]));
@@ -36,7 +36,7 @@ export function supportPanel(color) {
     components: [{ type: 17, accent_color: color, components: [
       { type: 10, content: [
         "## Ouvrir un ticket",
-        "Choisis le type de demande ci-dessous. Un fil privé s'ouvre avec l'équipe KX, prévenue tout de suite.",
+        "Choisis le type de demande ci-dessous. Un fil privé s'ouvre avec l'équipe K’X, prévenue tout de suite.",
         "",
         "-# CANDIDATURE ET CERTIFICATION",
         "Tout se décide en vocal. Dans ton ticket, propose un créneau ou accepte celui de l'équipe, puis rejoins le salon des entretiens à l'heure dite.",
@@ -91,7 +91,7 @@ export async function openTicket(env, h, user, type, fields) {
   const thread = await t.json();
   await h.discord(env, "PUT", `/channels/${thread.id}/thread-members/${user.id}`);
   const roles = await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/roles`)).json();
-  const equipe = roles.find((r) => r.name === "Équipe KX");
+  const equipe = roles.find((r) => r.name === "Équipe K’X");
   const voice = chans.find((c) => c.name === VOICE_NAME);
 
   const body = Object.entries(fields).filter(([, v]) => v).map(([k, v]) => `**${k}**\n${v}`).join("\n\n");
@@ -228,7 +228,7 @@ export async function rdvReminders(env, h) {
   const due = await store(env, "rdvDue", { now: Date.now() / 1000, within: 3600 }).catch(() => []);
   if (!due.length) return;
   const { found: voice } = await findChannel(h, env, (c) => c.name === VOICE_NAME);
-  const equipe = (await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/roles`)).json()).find((r) => r.name === "Équipe KX");
+  const equipe = (await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/roles`)).json()).find((r) => r.name === "Équipe K’X");
   for (const r of due) {
     await h.discord(env, "POST", `/channels/${r.thread}/messages`, {
       content: `⏰ <@${r.owner}>${equipe ? ` <@&${equipe.id}>` : ""} l'appel commence <t:${r.ts}:R>, rendez-vous dans ${voice ? `<#${voice.id}>` : "le salon des entretiens"}.`,

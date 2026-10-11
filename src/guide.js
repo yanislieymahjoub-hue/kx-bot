@@ -7,7 +7,7 @@ export const V2 = 1 << 15; // drapeau « composants v2 »
 const SITE = "https://kxautomatisation.fr";
 const RESEAUX = "https://linktr.ee/kxautomatisation";
 const C = CHANNELS;
-const VERSION = "3"; // à changer quand une image est refaite, pour que Discord la recharge
+const VERSION = "4"; // à changer quand une image est refaite, pour que Discord la recharge
 export const asset = (p) => `${ASSETS_URL}/${p}?v=${VERSION}`;
 
 const text = (content) => ({ type: 10, content });
@@ -24,12 +24,12 @@ export function welcomeV2(commandesId, selfRoles) {
   return {
     flags: V2,
     components: [box(BOTS.kx.color, [
-      gallery(asset("banners/bienvenue.gif"), "Bienvenue chez KX Automatisation"),
+      gallery(asset("banners/bienvenue.gif"), "Bienvenue chez K’X Automatisation"),
       text([
-        "KX aide les entreprises à gagner du temps grâce à l'automatisation et à l'IA, de l'artisan au grand groupe.",
+        "K’X aide les entreprises à gagner du temps grâce à l'automatisation et à l'IA, de l'artisan au grand groupe.",
         "",
         "Ce serveur réunit les **FDE** (Forward Deployed Engineers, les ingénieurs qui déploient l'IA directement chez le client). Ils vont sur le terrain, comprennent le métier d'un client et lui livrent des automatisations qui tournent pour de vrai. Débutant ou confirmé, tu as ta place ici.",
-        "-# Yanis, fondateur de KX",
+        "-# Yanis, fondateur de K’X",
       ].join("\n")),
       sep(2),
       text([
@@ -41,7 +41,7 @@ export function welcomeV2(commandesId, selfRoles) {
         `<#${C.annonces}> les nouvelles · <#${C.parcours}> la certification · <#${C.defi}> le défi du lundi · <#${C.rendus}> tes rendus · <#${C.questions}> l'entraide · <#${C.vos_creations}> tes projets · <#${C.discussion}> tout le reste`,
         "",
         "-# 03 · LES BOTS",
-        `Six bots KX t'accompagnent, chacun avec sa couleur. Leurs commandes sont expliquées dans ${commandesId ? `<#${commandesId}>` : "`/aide`"}.`,
+        `Six bots K’X t'accompagnent, chacun avec sa couleur. Leurs commandes sont expliquées dans ${commandesId ? `<#${commandesId}>` : "`/aide`"}.`,
         "",
         "-# 04 · LES POINTS",
         "Aider quelqu'un, réussir un quiz ou briller sur un défi rapporte des points. Le classement tombe chaque dimanche à 18h.",
@@ -58,7 +58,7 @@ export function welcomeV2(commandesId, selfRoles) {
       ].join("\n")),
       row(btn("Visite guidée", "tour:1", 1, "▶️"), btn("Rejoindre le parcours FDE", "open:candidature", 3)),
       row(...selfRoles.map(([label, emoji]) => btn(label, `role:${label}`, 2, emoji))),
-      row(link("Site KX", SITE, "🌐"), link("Nos réseaux", RESEAUX, "🔗")),
+      row(link("Site K’X", SITE, "🌐"), link("Nos réseaux", RESEAUX, "🔗")),
     ])],
   };
 }
@@ -67,8 +67,8 @@ export function welcomeV2(commandesId, selfRoles) {
 const DOCS = {
   kx: ["Accueil, contact, tickets et réglages", [
     "`/aide` Ce guide, visible par toi seul 🔒",
-    "`/kx` Présente KX Automatisation",
-    "`/contact` Décris ton besoin, l'équipe KX te recontacte 🔒",
+    "`/kx` Présente K’X Automatisation",
+    "`/contact` Décris ton besoin, l'équipe K’X te recontacte 🔒",
     "`/rdv` Réserve un échange découverte gratuit 🔒",
     "`/roi` Calcule le temps et l'argent qu'une automatisation fait gagner en un an",
     "`/ticket` Ouvre un fil privé avec l'équipe, avec prise de rendez-vous en vocal pour les candidatures",
@@ -76,7 +76,7 @@ const DOCS = {
     "-# Équipe · `/annonce` `/kx-roles` `/kx-setup` `/kx-publier`",
   ]],
   ia: ["Questions, résumés et relectures", [
-    "`/ia` Pose une question sur l'automatisation, l'IA ou KX",
+    "`/ia` Pose une question sur l'automatisation, l'IA ou K’X",
     "`/resume` Résume les derniers messages du salon 🔒",
     "`/review` Colle ton workflow ou ton code, l'IA le relit et propose des améliorations 🔒",
     "`/pitch` Transforme ton automatisation en pitch client et message LinkedIn 🔒",
@@ -115,7 +115,7 @@ export function guideV2(ephemeral = false) {
     flags: V2 | (ephemeral ? 64 : 0),
     components: [
       box(BOTS.kx.color, [
-        gallery(asset("banners/equipe.gif"), "L'équipe des bots KX"),
+        gallery(asset("banners/equipe.gif"), "L'équipe des bots K’X"),
         text("## Le guide des commandes\nTape **/** dans n'importe quel salon, choisis une commande et remplis les cases.\n-# 🔒 la réponse n'est visible que par toi"),
       ]),
       ...Object.entries(DOCS).map(([k, [role, lines]]) => box(BOTS[k].color, [
@@ -123,7 +123,7 @@ export function guideV2(ephemeral = false) {
         text(lines.join("\n")),
       ])),
       box(0x5865f2, [text([
-        "### KX Musique\n-# La musique dans les salons vocaux",
+        "### K’X Musique\n-# La musique dans les salons vocaux",
         "Rejoins un salon vocal puis tape `/play` suivi d'un titre ou d'un lien.",
         "`/skip` passe au titre suivant · `/stop` arrête la musique",
       ].join("\n"))]),
@@ -134,8 +134,8 @@ export function guideV2(ephemeral = false) {
 // ------------------------------------------------------------ visite guidée
 // Chaque étape: [couleur, image (logo ou bannière), titre, lignes]
 const TOUR = [
-  [BOTS.kx.color, "bots/bot.png", "Bienvenue chez KX", [
-    "KX aide les entreprises à gagner du temps avec l'automatisation et l'IA.",
+  [BOTS.kx.color, "bots/bot.png", "Bienvenue chez K’X", [
+    "K’X aide les entreprises à gagner du temps avec l'automatisation et l'IA.",
     "Ici, la communauté des FDE apprend, construit et livre de vraies missions.",
     "La visite dure une minute, clique sur Suivant.",
   ]],
@@ -147,9 +147,9 @@ const TOUR = [
     "Tout commence par une candidature, puis un entretien en vocal avec l'équipe.",
   ]],
   [BOTS.ia.color, "banners/equipe.gif", "Six bots, chacun son rôle", [
-    "**KX Bot** l'accueil et l'équipe · **KX IA** tes questions",
-    "**KX Académie** le parcours · **KX Missions** les contrats",
-    "**KX Arène** les points · **KX Veille** l'actu IA",
+    "**K’X Bot** l'accueil et l'équipe · **K’X IA** tes questions",
+    "**K’X Académie** le parcours · **K’X Missions** les contrats",
+    "**K’X Arène** les points · **K’X Veille** l'actu IA",
   ]],
   [BOTS.arene.color, "bots/arene.png", "Les points", [
     "Un coup de main remercié avec `/merci` rapporte 10 points.",

@@ -1,7 +1,7 @@
 import { SKILLS } from "./onboarding.js";
 
 // Rôles du serveur: équipe, badges d'expertise, rôles de communauté. Créés et rangés par /kx-publier.
-// Ordre = du plus haut au plus bas, sous le rôle de KX Bot. Les rôles déjà existants non listés gardent leur ordre, en dessous.
+// Ordre = du plus haut au plus bas, sous le rôle de K’X Bot. Les rôles déjà existants non listés gardent leur ordre, en dessous.
 
 const P = {
   KICK: 2n, AUDIT: 128n, PRIORITY: 256n, MANAGE_MESSAGES: 8192n, MENTION: 131072n, MUTE: 1n << 22n, DEAFEN: 1n << 23n, MOVE: 1n << 24n,
@@ -34,20 +34,27 @@ export const ROLES = [
   ["Notif défis", 0, false, "0", "notif"],
 ];
 
-// Badges que l'équipe peut donner avec /badge (KX Académie)
+// Badges que l'équipe peut donner avec /badge (K’X Académie)
 export const BADGES = ROLES.filter(([, , , , t]) => t === "expert" || t === "badge").map(([n]) => n);
 export const BADGE_EMOJI = {
   "Expert Cyber": "🔐", "Expert Réseau": "🌐", "Expert IA": "🤖", "Expert No-code": "⚙️", "Expert Dev": "🐍", "Expert Data": "📊",
   "Champion du défi": "🏆", "Bêta-testeur": "🧪", "Pionnier": "🚀",
 };
+export const RENAMED = { "Équipe KX": "Équipe K’X" };
 export const TOP_ROLE = "Top de la semaine";
 
-// Crée les rôles manquants puis range tout sous KX Bot
+// Crée les rôles manquants puis range tout sous K’X Bot
 export async function ensureRoles(env, h, botId) {
   const G = h.GUILD_ID;
   const get = async (p) => (await h.discord(env, "GET", p)).json();
   let roles = await get(`/guilds/${G}/roles`);
   const created = [];
+  // anciens noms renommés (marque K’X avec apostrophe)
+  for (const [from, to] of Object.entries(RENAMED)) {
+    const r = roles.find((x) => x.name === from);
+    if (r && !roles.some((x) => x.name === to)) { await h.discord(env, "PATCH", `/guilds/${G}/roles/${r.id}`, { name: to }); created.push(`${from} → ${to}`); }
+  }
+  if (created.length) roles = await get(`/guilds/${G}/roles`);
   for (const [name, color, hoist, permissions, type] of ROLES) {
     if (type === "existant" || roles.some((r) => r.name === name)) continue;
     const res = await h.discord(env, "POST", `/guilds/${G}/roles`, { name, color, hoist, permissions, mentionable: type === "equipe" });
@@ -57,13 +64,13 @@ export async function ensureRoles(env, h, botId) {
   roles = await get(`/guilds/${G}/roles`);
   const me = await get(`/guilds/${G}/members/${botId}`);
   const top = Math.max(...roles.filter((r) => me.roles.includes(r.id)).map((r) => r.position));
-  // tout ce qui est sous KX Bot, dans l'ordre voulu, les autres à la suite dans leur ordre actuel
+  // tout ce qui est sous K’X Bot, dans l'ordre voulu, les autres à la suite dans leur ordre actuel
   const below = roles.filter((r) => r.id !== G && r.position < top).sort((a, b) => b.position - a.position);
   const wanted = ROLES.map(([n]) => below.find((r) => r.name === n)).filter(Boolean);
   const order = [...wanted, ...below.filter((r) => !wanted.includes(r))];
   const res = await h.discord(env, "PATCH", `/guilds/${G}/roles`, order.map((r, k) => ({ id: r.id, position: top - 1 - k })));
   if (!res.ok) throw new Error(`rangement (${res.status})`);
-  return `${created.length ? `créés ${created.join(", ")}` : "tous déjà là"}, ${order.length} rôles rangés`;
+  return `${created.length ? `créés ou renommés ${created.join(", ")}` : "tous déjà là"}, ${order.length} rôles rangés`;
 }
 
 // Donne le rôle de la semaine au premier du classement et le retire aux autres

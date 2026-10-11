@@ -3,11 +3,11 @@ const MANAGE_MESSAGES = String(0x2000);
 const MANAGE_ROLES = String(0x10000000);
 
 export const COMMANDS = [
-  { name: "kx", description: "Présentation de KX Automatisation" },
-  { name: "rdv", description: "Prendre rendez-vous avec KX" },
-  { name: "contact", description: "Décrire ton besoin à l'équipe KX" },
+  { name: "kx", description: "Présentation de K’X Automatisation" },
+  { name: "rdv", description: "Prendre rendez-vous avec K’X" },
+  { name: "contact", description: "Décrire ton besoin à l'équipe K’X" },
   {
-    name: "ia", description: "Poser une question à l'IA de KX",
+    name: "ia", description: "Poser une question à l'IA de K’X",
     options: [{ type: 3, name: "question", description: "Ta question", required: true, max_length: 1000 }],
   },
   {
@@ -27,7 +27,7 @@ export const COMMANDS = [
     ],
   },
   { name: "kx-roles", description: "(Équipe) Poster le panneau de rôles", default_member_permissions: MANAGE_MESSAGES },
-  { name: "aide", description: "Toutes les commandes du KX Bot" },
+  { name: "aide", description: "Toutes les commandes du K’X Bot" },
   { name: "candidature", description: "Rejoindre le parcours FDE (formation et certification)" },
   {
     name: "profil", description: "Voir le niveau FDE d'un membre",
@@ -100,7 +100,7 @@ export const COMMANDS = [
     ],
   },
   {
-    name: "ticket", description: "Ouvrir un fil privé avec l'équipe KX",
+    name: "ticket", description: "Ouvrir un fil privé avec l'équipe K’X",
     options: [{ type: 3, name: "sujet", description: "Sujet (facultatif)", required: false, max_length: 150 }],
   },
   {
@@ -113,7 +113,7 @@ export const COMMANDS = [
       { type: 4, name: "duree", description: "Durée en minutes (60 par défaut)", required: false, min_value: 15, max_value: 480 },
     ],
   },
-  { name: "stats", description: "La communauté KX en chiffres" },
+  { name: "stats", description: "La communauté K’X en chiffres" },
   { name: "veille", description: "Les dernières actus IA (visible par toi seul)" },
   { name: "kx-setup", description: "(Admin) Configurer salons, forums, support, accueil", default_member_permissions: "8" },
   { name: "kx-publier", description: "(Admin) Logo, mode d'emploi d'accueil, guide des commandes, invitations", default_member_permissions: "8" },

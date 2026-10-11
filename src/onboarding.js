@@ -2,11 +2,12 @@
 
 // Compétences proposées à l'arrivée (un rôle chacune, sans couleur)
 export const SKILLS = [
-  ["n8n", "⚙️"], ["Make", "🟣"], ["Zapier", "🟠"], ["Power Automate", "🔷"],
-  ["Python", "🐍"], ["JavaScript", "🟨"], ["API et webhooks", "🔌"], ["Agents IA", "🤖"],
-  ["Prompt engineering", "✍️"], ["RAG et bases vectorielles", "🧠"], ["Excel et VBA", "📊"], ["SQL et data", "🗄️"],
-  ["Cybersécurité", "🔐"], ["Réseaux et systèmes", "🌐"], ["Cloud et DevOps", "☁️"], ["Web et applis", "🖥️"],
-  ["Scraping", "🕸️"], ["CRM et ERP", "📇"],
+  ["n8n", "⚙️", "auto"], ["Make", "🟣", "auto"], ["Zapier", "🟠", "auto"], ["Power Automate", "🔷", "auto"],
+  ["Agents IA", "🤖", "auto"], ["Prompt engineering", "✍️", "auto"], ["RAG et bases vectorielles", "🧠", "auto"], ["Excel et VBA", "📊", "auto"],
+  ["CRM et ERP", "📇", "auto"],
+  ["Python", "🐍", "tech"], ["JavaScript", "🟨", "tech"], ["API et webhooks", "🔌", "tech"], ["SQL et data", "🗄️", "tech"],
+  ["Cybersécurité", "🔐", "tech"], ["Réseaux et systèmes", "🌐", "tech"], ["Cloud et DevOps", "☁️", "tech"], ["Web et applis", "🖥️", "tech"],
+  ["Scraping", "🕸️", "tech"],
 ];
 
 export const WELCOME_SCREEN = (C) => ({
@@ -40,11 +41,11 @@ export function onboardingBody(C, roles, extraDefault = []) {
     prompts: [
       prompt("Qu'est-ce qui t'amène ici ?", false, true, [
         opt("Devenir FDE", "Forward Deployed Engineer, l'ingénieur qui déploie l'IA chez le client", "🎓", ["parcours", "defi", "rendus"]),
-        opt("Décrocher des missions clients", "Réservées aux FDE certifiés par KX", "💼", ["parcours", "certifications"]),
+        opt("Décrocher des missions clients", "Réservées aux FDE certifiés par K’X", "💼", ["parcours", "certifications"]),
         opt("Apprendre l'automatisation", "n8n, Make, Zapier, sans forcément coder", "⚙️", ["no_code", "questions"]),
         opt("Progresser en code", "Python, JavaScript, API", "🐍", ["code", "questions"]),
         opt("Construire des agents IA", "LLM, RAG, outils, MCP", "🤖", ["code", "veille_ia"]),
-        opt("Automatiser mon entreprise", "Gagner du temps avec l'aide de KX", "🏢", ["travailler", "realisations"]),
+        opt("Automatiser mon entreprise", "Gagner du temps avec l'aide de K’X", "🏢", ["travailler", "realisations"]),
         opt("Recruter un FDE ou un freelance", "Des profils formés et certifiés", "🤝", ["travailler"]),
         opt("Partager mes projets", "Montrer ce que je construis", "🛠️", ["vos_creations"]),
         opt("Suivre l'actu de l'IA", "La veille publiée chaque heure", "📰", ["veille_ia"]),
@@ -67,12 +68,14 @@ export function onboardingBody(C, roles, extraDefault = []) {
         opt("En reconversion", null, "🔄", ["presente_toi", "parcours"]),
         opt("Autre", null, "✨", ["presente_toi"]),
       ]),
-      prompt("Tes compétences (plusieurs choix possibles)", false, false,
-        SKILLS.map(([n, e]) => opt(n, null, e, [/^(Python|JavaScript|API|Agents|RAG|SQL|Scraping|Cloud|Web)/.test(n) ? "code" : "no_code"], [n]))),
+      prompt("Tes compétences en automatisation et IA", false, false,
+        SKILLS.filter(([, , g]) => g === "auto").map(([n, e]) => opt(n, null, e, ["no_code"], [n]))),
+      prompt("Tes compétences techniques", false, false,
+        SKILLS.filter(([, , g]) => g === "tech").map(([n, e]) => opt(n, null, e, ["code"], [n]))),
       prompt("Quelles notifications veux-tu ?", false, false, [
         opt("Lives et ateliers", "Être prévenu des ateliers", "🎓", ["ateliers"], ["Notif lives"]),
         opt("Défi de la semaine", "Chaque lundi à 9h", "🏋️", ["defi"], ["Notif défis"]),
-        opt("Annonces", "Les nouveautés KX", "📢", ["annonces"], ["Notif annonces"]),
+        opt("Annonces", "Les nouveautés K’X", "📢", ["annonces"], ["Notif annonces"]),
       ]),
     ],
   };

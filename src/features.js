@@ -118,7 +118,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
         { role: "system", content: "Tu aides des FDE à présenter une automatisation à un client. Français, vouvoiement, ton direct, zéro jargon technique, pas de promesse chiffrée inventée." },
         { role: "user", content: `Automatisation: ${desc}\nInterlocuteur: ${cible}\nÉcris: 1) un pitch oral de 4 phrases centré sur le temps gagné et la tranquillité, 2) un message LinkedIn de 3 lignes, 3) les 3 objections probables avec une réponse courte chacune.` },
       ], 700);
-      await h.followUp(env, i, { embeds: [{ color: h.BOTS.ia.color, title: "🎤 Ton pitch client", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · à adapter à ton client" } }] });
+      await h.followUp(env, i, { embeds: [{ color: h.BOTS.ia.color, title: "🎤 Ton pitch client", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de K’X · à adapter à ton client" } }] });
     })());
     return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
   }
@@ -171,7 +171,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
       const ev = await h.discord(env, "POST", `/guilds/${h.GUILD_ID}/scheduled-events`, {
         name: titre.slice(0, 100), description: desc.slice(0, 1000), privacy_level: 2,
         scheduled_start_time: start.toISOString(), scheduled_end_time: new Date(start.getTime() + duree * 60000).toISOString(),
-        entity_type: voice ? 2 : 3, channel_id: voice?.id, entity_metadata: voice ? undefined : { location: "Discord KX" },
+        entity_type: voice ? 2 : 3, channel_id: voice?.id, entity_metadata: voice ? undefined : { location: "Discord K’X" },
       });
       const event = ev.ok ? await ev.json() : null;
       const notif = await roleByName(h, env, "Notif lives");
@@ -195,7 +195,7 @@ export async function handleFeatures(name, i, env, ctx, h) {
     ]);
     const count = (n) => { const r = roles.find((x) => x.name === n); return members && r ? members.filter((m) => m.roles.includes(r.id)).length : "?"; };
     return h.reply({ embeds: [{
-      color: h.BOTS.arene.color, title: "📊 La communauté KX en chiffres", footer: h.FOOTER,
+      color: h.BOTS.arene.color, title: "📊 La communauté K’X en chiffres", footer: h.FOOTER,
       fields: [
         { name: "Membres", value: `${g.approximate_member_count ?? "?"}`, inline: true },
         { name: "En ligne", value: `${g.approximate_presence_count ?? "?"}`, inline: true },
@@ -247,7 +247,7 @@ export async function handleFeaturesModal(i, env, ctx, h) {
       { role: "system", content: "Tu es un FDE senior qui fait une revue bienveillante mais exigeante d'automatisations (n8n, Make, Python, agents IA). Français, tutoiement, concret." },
       { role: "user", content: `Contexte: ${f.contexte}\n\nContenu à relire:\n${f.contenu}\n\nRéponds avec ces sections: **Ce qui est bien** (2 puces), **Risques** (erreurs non gérées, sécurité, données personnelles, coûts, limites d'API), **Améliorations concrètes** (3 à 5 puces actionnables), **Prêt pour un client ?** (oui/non + pourquoi, 1 phrase), **Note** /10.` },
     ], 900);
-    await h.followUp(env, i, { embeds: [{ color: h.BOTS.ia.color, title: "🔍 Review IA", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de KX · demande aussi l'avis d'un mentor dans le forum des rendus" } }] });
+    await h.followUp(env, i, { embeds: [{ color: h.BOTS.ia.color, title: "🔍 Review IA", description: txt || "L'IA n'a pas répondu, réessaie.", footer: { text: "Généré par l'IA de K’X · demande aussi l'avis d'un mentor dans le forum des rendus" } }] });
   })());
   return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
 }
@@ -311,7 +311,7 @@ async function runSetup(env, h) {
     if (!support) {
       const parent = chans.find((c) => c.type === 4 && c.name === "◆ ENTRAIDE");
       const res = await h.discord(env, "POST", `/guilds/${h.GUILD_ID}/channels`, {
-        name: "🎫・support", type: 0, parent_id: parent?.id, topic: "Ouvre un ticket privé avec l'équipe KX.",
+        name: "🎫・support", type: 0, parent_id: parent?.id, topic: "Ouvre un ticket privé avec l'équipe K’X.",
         permission_overwrites: [{ id: h.GUILD_ID, type: 0, deny: String(SEND | PUB_THREADS | PRIV_THREADS) }],
       });
       await ok(res);

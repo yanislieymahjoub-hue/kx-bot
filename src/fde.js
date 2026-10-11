@@ -15,7 +15,7 @@ async function member(h, env, userId) {
   return res.ok ? res.json() : null;
 }
 
-// message privé envoyé par KX Académie
+// message privé envoyé par K’X Académie
 async function dm(h, env, userId, payload) {
   const ch = await h.discord(env, "POST", "/users/@me/channels", { recipient_id: userId }, "academie");
   if (!ch.ok) return;
@@ -46,17 +46,17 @@ async function announceLevel(h, env, userId, step, by) {
       allowed_mentions: { users: [userId] },
       embeds: [{
         color: 0xffd166, title: "🏅 Nouveau FDE Certifié",
-        description: `Félicitations <@${userId}> ! Tu rejoins les FDE certifiés KX et tu as maintenant accès à <#${h.CHANNELS.missions}>.`,
+        description: `Félicitations <@${userId}> ! Tu rejoins les FDE certifiés K’X et tu as maintenant accès à <#${h.CHANNELS.missions}>.`,
         footer: { text: `Validé par ${by}` }, timestamp: new Date().toISOString(),
       }],
     }, "academie");
   }
   const text = {
-    apprenti: `Bienvenue dans le parcours FDE KX 🌱 Tu es **Apprenti**. Commence par lire <#${h.CHANNELS.parcours}> et relève le défi de la semaine dans <#${h.CHANNELS.defi}>.`,
+    apprenti: `Bienvenue dans le parcours FDE K’X 🌱 Tu es **Apprenti**. Commence par lire <#${h.CHANNELS.parcours}> et relève le défi de la semaine dans <#${h.CHANNELS.defi}>.`,
     formation: `Tu passes **En formation** 🛠️ Poste tes réalisations dans <#${h.CHANNELS.rendus}>, un mentor va te suivre.`,
     fde: `Tu es maintenant **FDE Certifié** 🏅 Les missions clients t'attendent dans <#${h.CHANNELS.missions}>. Bravo !`,
   }[step.key];
-  await dm(h, env, userId, { embeds: [{ color: h.VIOLET, title: "KX Automatisation · Parcours FDE", description: text, footer: h.FOOTER }] });
+  await dm(h, env, userId, { embeds: [{ color: h.VIOLET, title: "K’X Automatisation · Parcours FDE", description: text, footer: h.FOOTER }] });
 }
 
 const canManage = (i) => {
@@ -113,7 +113,7 @@ export async function handleFde(name, i, env, ctx, h) {
       if (key === "mentor") {
         const r = (await guildRoles(h, env)).find((x) => x.name === h.MENTOR_ROLE);
         if (r) await h.discord(env, "PUT", `/guilds/${h.GUILD_ID}/members/${targetId}/roles/${r.id}`);
-        await dm(h, env, targetId, { embeds: [{ color: h.VIOLET, description: "Tu es maintenant **Mentor** 🎓 sur le serveur KX. Merci d'accompagner les apprentis !", footer: h.FOOTER }] });
+        await dm(h, env, targetId, { embeds: [{ color: h.VIOLET, description: "Tu es maintenant **Mentor** 🎓 sur le serveur K’X. Merci d'accompagner les apprentis !", footer: h.FOOTER }] });
         return;
       }
       const step = await setLevel(h, env, targetId, key);
@@ -176,7 +176,7 @@ export async function handleFdeComponent(i, env, ctx, h) {
     const by = user.global_name ?? user.username;
     ctx.waitUntil((async () => {
       if (action === "refus") {
-        await dm(h, env, targetId, { embeds: [{ color: h.LILAS, description: "Merci pour ta candidature au parcours FDE KX. Elle n'est pas retenue pour l'instant: continue à pratiquer avec les défis de la semaine et retente ta chance bientôt 💪", footer: h.FOOTER }] });
+        await dm(h, env, targetId, { embeds: [{ color: h.LILAS, description: "Merci pour ta candidature au parcours FDE K’X. Elle n'est pas retenue pour l'instant: continue à pratiquer avec les défis de la semaine et retente ta chance bientôt 💪", footer: h.FOOTER }] });
       } else {
         const step = await setLevel(h, env, targetId, action);
         if (step) await announceLevel(h, env, targetId, step, by);
@@ -196,7 +196,7 @@ export async function handleFdeComponent(i, env, ctx, h) {
     ctx.waitUntil(h.discord(env, "POST", `/channels/${h.CHANNELS.staff}/messages`, {
       embeds: [{ color: h.BOTS.missions.color, title: "✋ Intérêt pour une mission", description: `<@${user.id}> est intéressé par **${title}**\n[Voir la mission](https://discord.com/channels/${h.GUILD_ID}/${i.channel_id}/${i.message.id})`, timestamp: new Date().toISOString() }],
     }, "missions"));
-    return h.reply({ content: "C'est noté, l'équipe KX revient vers toi en message privé." }, true);
+    return h.reply({ content: "C'est noté, l'équipe K’X revient vers toi en message privé." }, true);
   }
 
   return null;
@@ -212,7 +212,7 @@ export async function handleFdeModal(i, env, ctx, h) {
     ctx.waitUntil((async () => {
       await setLevel(h, env, user.id, "apprenti");
       const msg = await openTicket(env, h, user, "candidature", { "Niveau et outils": f.niveau, Projet: f.projets, Objectif: f.objectif, Lien: f.lien, Disponibilités: f.dispos });
-      await announceLevel(h, env, user.id, h.LADDER[0], "KX Académie");
+      await announceLevel(h, env, user.id, h.LADDER[0], "K’X Académie");
       await h.followUp(env, i, { content: `Candidature envoyée ✅ Tu es maintenant **Apprenti** 🌱\n${msg}\nOn y fixe ensemble l'heure de ton entretien en vocal.` });
     })());
     return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
