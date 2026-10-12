@@ -14,6 +14,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Tester les parcours avant déploiement
+        run: node --test
+
       - name: Vérifier les secrets
         env:
           CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -48,6 +51,9 @@ jobs:
             fi
           done
 
+      - name: Vérifier les accès Discord avant déploiement
+        run: node scripts/activate-onboarding.mjs --preflight
+
       - name: Déployer sur Cloudflare
         run: npx --yes wrangler@4 deploy
 
@@ -61,3 +67,6 @@ jobs:
 
       - name: Configurer les bots et leurs commandes
         run: node scripts/setup-bots.mjs
+
+      - name: Activer et vérifier l’accueil et les formations
+        run: node scripts/activate-onboarding.mjs

@@ -3,6 +3,12 @@ const MANAGE_MESSAGES = String(0x2000);
 const MANAGE_ROLES = String(0x10000000);
 
 export const COMMANDS = [
+  { name: 'presentation', description: 'Te présenter pour ouvrir ton accès à la communauté FDE' },
+  { name: 'formation', description: 'Approfondir tes bases avec un module et un exercice', options: [{ type: 3, name: 'module', description: 'Choisis un module (facultatif)', choices: [
+    { name: 'API et webhooks fiables', value: 'api' }, { name: 'Workflows n8n / Make robustes', value: 'workflows' },
+    { name: 'Données en Python / JavaScript', value: 'scripts' }, { name: 'Agents IA et évaluation', value: 'agents' },
+    { name: 'Excel / Power Query', value: 'excel' }, { name: 'Livrer en production', value: 'production' },
+  ] }] },
   { name: "kx", description: "Présentation de K’X Automatisation" },
   { name: "rdv", description: "Prendre rendez-vous avec K’X" },
   { name: "contact", description: "Décrire ton besoin à l'équipe K’X" },

@@ -6,7 +6,7 @@ export const BOTS = {
   kx: {
     name: "K’X Bot", path: "/", id: "1558510006364545074", color: 0x8b5cf6, logo: "bot",
     about: "L'assistant de la communauté K’X Automatisation. Accueil, contact, tickets et réglages. Tape /aide pour tout voir.",
-    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut"],
+    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut", "presentation"],
   },
   ia: {
     name: "K’X IA", path: "/ia", color: 0x22d3ee, logo: "ia",
@@ -18,7 +18,7 @@ export const BOTS = {
     name: "K’X Académie", path: "/academie", color: 0xf5b83d, logo: "academie",
     id: "1558564596288200945", publicKey: "ce0b67f07b6f6cf4f24d500d96368cbb20d0e73b0127e26ccd88e2a9c3fb4433",
     about: "Le parcours FDE de K’X. Candidatures, niveaux, défis de la semaine et ateliers.",
-    commands: ["candidature", "profil", "niveau", "badge", "defi", "atelier", "Profil FDE", "kx-academie"],
+    commands: ["candidature", "profil", "niveau", "badge", "defi", "atelier", "Profil FDE", "kx-academie", "formation"],
     channels: ["defi", "certifications", "ateliers", "vos_creations", "staff", "rendus", "parcours"],
   },
   missions: {

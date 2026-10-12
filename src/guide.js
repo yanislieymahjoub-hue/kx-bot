@@ -84,6 +84,7 @@ const DOCS = {
     "-# 30 demandes par jour et par membre",
   ]],
   academie: ["Parcours FDE, défis et ateliers", [
+    "`/formation` Choisis un module intermédiaire, lis la leçon et réalise son exercice",
     "`/candidature` Entre dans le parcours, tu passes Apprenti et un ticket s'ouvre pour fixer ton entretien en vocal",
     "`/profil` Ton niveau, ton mentor et tes points",
     "**Clic droit sur un membre → Applications → Profil FDE** donne la même fiche",
@@ -220,11 +221,12 @@ export function accueilV2() {
       text([
         "### Choisis ton espace",
         "**Communauté FDE** pour apprendre, s'entraîner, rejoindre le réseau et accéder aux missions.",
+        "Présente-toi via le formulaire : ta présentation sera publiée dans l’espace FDE, puis les salons s’ouvriront. N’y partage aucune donnée confidentielle.",
         "**Entreprise** pour parler de votre projet. Un espace privé s'ouvre, visible par vous et l'équipe K’X uniquement.",
         "",
         `-# Lis d'abord le <#${C.reglement}>. Chaque espace est séparé, la coordination K’X fait le lien.`,
       ].join("\n")),
-      row(btn("Je rejoins la communauté FDE", "esp:fde", 1, "🎓"), btn("Je représente une entreprise", "esp:client", 2, "🏢")),
+      row(btn("Me présenter et rejoindre", "esp:fde", 1, "🎓"), btn("Je représente une entreprise", "esp:client", 2, "🏢")),
       row(link("Site K’X", SITE, "🌐")),
     ])],
   };

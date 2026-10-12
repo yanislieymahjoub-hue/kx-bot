@@ -23,9 +23,38 @@ export class KXStore {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS dossier (ref TEXT PRIMARY KEY, kind TEXT, user TEXT, data TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS journal (ts INTEGER, quoi TEXT, ref TEXT, par TEXT, cible TEXT, detail TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS rdv (thread TEXT, owner TEXT, ts INTEGER, reminded INTEGER DEFAULT 0, PRIMARY KEY (thread, ts))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS introduction (user TEXT PRIMARY KEY, message TEXT, lock TEXT, updated INTEGER)`);
   }
 
   rows(q, ...b) { return this.sql.exec(q, ...b).toArray(); }
+
+  // Synchronous DO operations serialize admission attempts for the same member.
+  // No automatic lease expiry: a crashed publication needs staff reconciliation,
+  // rather than risking a duplicate post or granting access without a saved message.
+  introClaim({ user, lock }) {
+    const st = this.statutGet({ user }).statut;
+    if (st === 'fde') return { ok: false, reason: 'member' };
+    if (st && !['aucun', 'presentation'].includes(st)) return { ok: false, reason: 'conflict' };
+    const row = this.rows('SELECT message, lock FROM introduction WHERE user = ?', user)[0];
+    if (row?.lock) return { ok: false, reason: 'busy' };
+    this.sql.exec('INSERT INTO introduction (user, message, lock, updated) VALUES (?, NULL, ?, ?) ON CONFLICT(user) DO UPDATE SET lock = excluded.lock, updated = excluded.updated', user, lock, Date.now());
+    this.statutSet({ user, statut: 'presentation' });
+    return { ok: true, message: row?.message ?? null };
+  }
+  introPublished({ user, lock, message }) {
+    this.sql.exec('UPDATE introduction SET message = ?, updated = ? WHERE user = ? AND lock = ?', message, Date.now(), user, lock);
+    return { ok: true };
+  }
+  introComplete({ user, lock }) {
+    const row = this.rows('SELECT message, lock FROM introduction WHERE user = ?', user)[0];
+    if (row?.lock !== lock || !row.message || this.statutGet({ user }).statut !== 'presentation') return { ok: false };
+    this.statutSet({ user, statut: 'fde' });
+    return { ok: true };
+  }
+  introRelease({ user, lock }) {
+    this.sql.exec('UPDATE introduction SET lock = NULL WHERE user = ? AND lock = ?', user, lock);
+    return { ok: true };
+  }
 
   total(user) { return this.rows(`SELECT total FROM points WHERE user = ?`, user)[0]?.total ?? 0; }
 
@@ -181,5 +210,6 @@ export class KXStore {
 export async function store(env, op, args = {}) {
   const stub = env.STORE.get(env.STORE.idFromName("kx"));
   const res = await stub.fetch("https://store/", { method: "POST", body: JSON.stringify({ op, ...args }) });
+  if (!res.ok) throw new Error(`Stockage indisponible (${res.status})`);
   return res.json();
 }

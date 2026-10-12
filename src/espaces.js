@@ -4,6 +4,7 @@
 // Limite assumée: dans un serveur commun, Discord ne permet pas de garantir l'invisibilité totale d'un membre
 // ni d'interdire les messages privés entre membres.
 import { store } from "./store.js";
+import { presentationModal } from "./presentation.js";
 
 const B = { VIEW: 1024n, SEND: 2048n, REACT: 64n, EMBED: 16384n, ATTACH: 32768n, HISTORY: 65536n, MENTION: 131072n,
   CONNECT: 1048576n, SPEAK: 2097152n, PUB_THREADS: 1n << 35n, PRIV_THREADS: 1n << 36n, SEND_THREADS: 1n << 38n, APP_CMDS: 1n << 31n };
@@ -19,7 +20,7 @@ const isPrivate = (c, G) => (c.permission_overwrites ?? []).some((o) => o.id ===
 
 // ------------------------------------------------------------ statut d'un membre (base privée)
 export async function statutOf(env, userId) {
-  return (await store(env, "statutGet", { user: userId }).catch(() => ({}))).statut ?? STATUTS.aucun;
+  return (await store(env, "statutGet", { user: userId })).statut ?? STATUTS.aucun;
 }
 export const setStatut = (env, user, statut, ref) => store(env, "statutSet", { user, statut, ref });
 
@@ -53,7 +54,7 @@ export function planTexte(p) {
     `**Espace FDE** (${p.fde.length} salons et catégories, réservés au rôle neutre ${ROLE_FDE} et à l'équipe): ${p.fde.slice(0, 40).map(nom).join(", ")}${p.fde.length > 40 ? "…" : ""}`,
     `**Déjà privés, inchangés**: ${p.prives.map(nom).join(", ") || "aucun"}`,
     "**Clients**: un dossier privé par client (référence neutre C-xxxx), aucune vue sur l'espace FDE ni sur les autres clients",
-    "**Membres actuels**: reçoivent l'accès FDE pour ne rien perdre",
+    "**Membres actuels**: accès déjà attribués conservés ; les nouveaux passent par la présentation obligatoire",
     "**Autres réglages**: arrivée guidée Discord désactivée (remplacée par deux boutons dans #bienvenue), messages d'arrivée nominatifs coupés, rôle « Client » renommé en rôle neutre",
     "**Retour arrière**: sauvegarde complète des droits avant application, `/kx-espaces restaurer`",
   ].join("\n");
@@ -91,16 +92,16 @@ export async function prepAppliquer(env, h) {
 
   // 3. arrivée guidée Discord coupée d'abord: tant qu'elle est active, Discord exige un salon visible de tous
   q.push({ m: "PUT", p: `/guilds/${G}/onboarding`, l: "Arrivée guidée Discord", b: { enabled: false, mode: 0, prompts: [], default_channel_ids: [] } });
-  // 3 bis. membres actuels: accès FDE, sauf clients connus
+  // 3 bis. resynchroniser uniquement les membres déjà admis. Un nouveau passage
+  // de la migration ne doit jamais contourner la présentation des nouveaux.
   const mres = await h.discord(env, "GET", `/guilds/${G}/members?limit=1000`);
   const members = mres.ok ? await mres.json() : [];
   if (!mres.ok) out.push(`⚠️ Liste des membres ${mres.status}`);
   for (const m of members) {
     if (m.user.bot || m.roles.includes(fdeRole)) continue;
     const st = await statutOf(env, m.user.id);
-    if (st === STATUTS.client || st === STATUTS.client_qualif || st === STATUTS.conflit) continue;
-    q.push({ m: "PUT", p: `/guilds/${G}/members/${m.user.id}/roles/${fdeRole}`, l: "accès membre", c: "membres",
-      ...(st === STATUTS.aucun ? { then: { s: "statutSet", a: { user: m.user.id, statut: STATUTS.fde } } } : {}) });
+    if (st !== STATUTS.fde) continue;
+    q.push({ m: "PUT", p: `/guilds/${G}/members/${m.user.id}/roles/${fdeRole}`, l: "accès membre", c: "membres" });
   }
 
   // 4. espace FDE: @everyone ne voit plus, le rôle FDE et l'équipe voient
@@ -170,17 +171,11 @@ export async function prepRestaurer(env, h) {
 export async function rejoindreFde(i, env, h) {
   const user = i.member.user;
   const st = await statutOf(env, user.id);
-  if (st === STATUTS.client || st === STATUTS.client_qualif) {
-    await setStatut(env, user.id, STATUTS.conflit);
-    await h.discord(env, "POST", `/channels/${h.CHANNELS.staff}/messages`, { embeds: [{ color: 0xf59e0b, title: "⚖️ Cumul Client et FDE à arbitrer", description: `<@${user.id}> a un dossier client et demande l'espace FDE. Aucun accès n'a été ouvert.\n\`/kx-statut membre:@… statut:…\` pour trancher.` }] });
-    return h.reply({ content: "Ta demande est transmise à l'équipe, qui revient vers toi avant d'ouvrir un nouvel accès." }, true);
+  if ([STATUTS.client, STATUTS.client_qualif, STATUTS.conflit].includes(st)) {
+    return h.reply({ content: "Contacte l’équipe pour arbitrer ton parcours client/FDE avant d’ouvrir un nouvel accès." }, true);
   }
-  const role = (await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/roles`)).json()).find((r) => r.name === ROLE_FDE);
-  if (!role) return h.reply({ content: "L'espace FDE n'est pas encore ouvert." }, true);
-  await h.discord(env, "PUT", `/guilds/${h.GUILD_ID}/members/${user.id}/roles/${role.id}`);
-  await setStatut(env, user.id, STATUTS.fde);
-  const dem = (await (await h.discord(env, "GET", `/guilds/${h.GUILD_ID}/channels`)).json()).find((c) => c.name === "🧭・démarrer");
-  return h.reply({ content: `Bienvenue dans la communauté FDE ! Commence par <#${dem?.id ?? h.CHANNELS.discussion}>.` }, true);
+  if (st === STATUTS.fde) return h.reply({ content: `Tu as déjà accès. Présente-toi dans <#${h.CHANNELS.presente_toi}> et découvre les modules avec \`/formation\`.` }, true);
+  return h.json(presentationModal());
 }
 
 export const demandeClientModal = () => ({ type: 9, data: { custom_id: "client-modal", title: "Votre projet avec K’X", components: [
@@ -211,7 +206,7 @@ export async function demandeClient(i, env, ctx, h) {
   const f = {};
   for (const row of i.data.components) for (const c of row.components) f[c.custom_id] = c.value;
   const st = await statutOf(env, user.id);
-  if (st === STATUTS.fde || st === STATUTS.conflit) {
+  if (st === STATUTS.fde || st === STATUTS.conflit || st === 'presentation') {
     await setStatut(env, user.id, STATUTS.conflit);
     ctx.waitUntil(h.discord(env, "POST", `/channels/${h.CHANNELS.staff}/messages`, { embeds: [{ color: 0xf59e0b, title: "⚖️ Cumul Client et FDE à arbitrer", description: `<@${user.id}> est dans l'espace FDE et demande un dossier client (${f.entreprise}). Aucun accès client n'a été ouvert.` }] }));
     return h.reply({ content: "Votre demande est transmise à l'équipe, qui revient vers vous avant d'ouvrir un espace." }, true);
@@ -266,14 +261,21 @@ export const isCoord = (i) => {
 
 // Commandes autorisées selon le statut, vérifié côté serveur à chaque interaction
 const CLIENT_OK = new Set(["kx", "rdv", "contact", "roi", "aide", "mon-contrat"]);
-const NOUVEAU_OK = new Set(["kx", "rdv", "contact", "roi", "aide"]);
-export async function commandeAutorisee(i, env, name) {
+const NOUVEAU_OK = new Set(["kx", "rdv", "contact", "roi", "aide", "presentation"]);
+export async function commandeAutorisee(i, env, name, h) {
   if (isCoord(i)) return true;
   const st = await statutOf(env, (i.member?.user ?? i.user).id);
   if (st === STATUTS.fde) return true;
   if (st === STATUTS.client || st === STATUTS.client_qualif) return CLIENT_OK.has(name);
   if (st === STATUTS.conflit) return false;
-  // pas de statut: avant le cloisonnement, tout le monde garde l'ancien fonctionnement
-  const actif = (await store(env, "setting", { key: "espaces" }).catch(() => ({}))).value === "actif";
-  return actif ? NOUVEAU_OK.has(name) : true;
+  // Some members received Accès B during the original interrupted migration
+  // without a matching DB record. Preserve that existing access, without
+  // treating any other role or a pending/conflicting status as an admission.
+  if (st === STATUTS.aucun && i.member?.roles?.length && h) {
+    const res = await h.discord(env, 'GET', `/guilds/${h.GUILD_ID}/roles`);
+    if (!res.ok) return false;
+    const role = (await res.json()).find(r => r.name === ROLE_FDE);
+    if (role && i.member.roles.includes(role.id)) return true;
+  }
+  return NOUVEAU_OK.has(name);
 }

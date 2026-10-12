@@ -1,0 +1,82 @@
+K’X — Présentation et formation
+Version préparée le 12 octobre 2026
+
+COMPORTEMENT
+
+Le bouton esp:fde existant et /presentation ouvrent un formulaire de quatre champs.
+L’envoi publie une présentation dans #présente-toi avec l’identité Discord du membre,
+puis donne Accès B. Les champs vides ou trop courts sont refusés côté serveur.
+Le message désactive les mentions. Le formulaire explique que le contenu est publié.
+Ce contrôle vérifie la présence de contenu, pas sa sincérité ni sa qualité pédagogique.
+Les entreprises restent sur leur parcours propre ; aucune présentation communautaire
+ne leur est imposée.
+
+Les membres déjà admis (statut fde ou ancien Accès B sans statut) gardent leurs commandes.
+Un statut client/conflit prime sur un ancien rôle. L’attribution manuelle par la coordination
+reste une dérogation explicite. Supprimer une présentation après admission ne révoque pas
+automatiquement l’accès. La publication libre d’un message dans un salon n’est pas observée
+par ce Worker HTTP ; l’admission des nouveaux passe donc par le formulaire.
+
+/formation ouvre un catalogue privé de six modules. Chaque module comporte trois pages,
+un exercice, un rendu attendu et des critères de correction. Aucun rôle ni score n’est
+accordé par la lecture. Les certifications restent du ressort des mentors.
+
+AVANT ACTIVATION
+
+1. Relire la modification et exécuter node --test avec Node 22 ou plus récent.
+2. Vérifier la hiérarchie et les droits du bot sur le serveur cible. Il doit pouvoir lire
+   les rôles, publier dans #présente-toi et gérer Accès B, placé sous son rôle.
+3. Vérifier les dérogations de salons avec un compte neuf sans rôle. Aucun rôle attribué
+   automatiquement ni aucune dérogation individuelle ne doit ouvrir les salons FDE.
+4. Sauvegarder les permissions et contrôler le retour arrière. Aucun reset des anciens
+   membres et aucune suppression de rôle ou d’invitation ne sont inclus.
+5. La fusion dans main déclenche le workflow existant de déploiement Cloudflare. Celui-ci
+   enregistre aussi les commandes et réorganise des rôles via setup-bots.mjs. Ce comportement
+   existant doit être pris en compte avant la fusion. Ne pas lancer le script pendant la revue.
+
+Le bouton esp:fde déjà publié prend le nouveau comportement dès déploiement du Worker.
+Le workflow vérifie la hiérarchie d’Accès B et les accès @everyone des salons configurés
+avant déploiement. Après configuration des commandes, activate-onboarding.mjs actualise
+uniquement le panneau d’accueil du bot et ajoute ou actualise le catalogue dans #parcours.
+Il relit les messages pour confirmer leur présence et ne supprime aucun message utilisateur.
+/kx-publier reste une commande plus large (logos, rôles, permissions, invitations).
+
+RECETTE RÉELLE À EFFECTUER APRÈS DÉPLOIEMENT
+
+- Compte neuf : accueil visible, espace FDE fermé ; quatre champs obligatoires ; présentation
+  visible après envoi ; accès ouvert seulement après publication confirmée.
+- Erreur de publication : aucun rôle donné. Erreur d’attribution : correction des permissions
+  puis nouvelle tentative, avec une seule présentation publiée.
+- Deux clics simultanés : un seul message et un seul traitement d’admission.
+- Ancien membre : commandes et salons conservés. Client/conflit : espace FDE toujours fermé.
+- /formation : catalogue, 18 pages, navigation privée, rendus évalués par un mentor.
+- Parcours entreprise complet : bouton, dossier C-xxxx, validation staff, autre client incapable
+  de voir le dossier. Cette recette n’a pas été réalisée pendant cette préparation.
+
+REPRISE APRÈS UNE COUPURE INCERTAINE
+
+La base ne conserve que l’identifiant du membre, du message, le verrou et sa date ; le texte
+de présentation est dans Discord. Une erreur HTTP claire libère le verrou. Une réponse de
+publication perdue, une erreur serveur ou un arrêt brutal laisse le verrou en place afin
+d’éviter une republication dont l’effet précédent serait inconnu.
+
+La coordination vérifie d’abord #présente-toi et le rôle effectif du membre. Si la présentation
+est publiée et satisfaisante, /kx-statut peut ouvrir l’accès après arbitrage (dérogation manuelle
+journalisée). Si aucune présentation n’existe, un opérateur ayant accès au Durable Object doit
+réconcilier la ligne introduction du membre et libérer son verrou, après confirmation qu’aucun
+traitement n’est encore en cours. Ne jamais vider toute la table. Il n’existe pas encore de
+commande Discord dédiée à cette reprise technique exceptionnelle.
+
+RETOUR ARRIÈRE
+
+Redéployer la révision précédente remettrait aussi l’ancien accès direct sans présentation.
+La table introduction est additive, sans suppression de données existantes. Les statuts
+presentation en attente doivent être recensés et traités avant un retour à l’ancien code.
+Ne pas utiliser /kx-espaces restaurer comme simple annulation de cette version : cette
+commande restaure les permissions globales du serveur et a un périmètre bien plus large.
+
+LIMITES DES TESTS
+
+Les tests signent de vraies interactions Ed25519 et exécutent le Worker et KXStore avec SQLite.
+Seuls les appels Discord sont simulés. Ils ne prouvent ni les droits réels ni les comportements
+du runtime Durable Objects déployé. Aucun secret Cloudflare ou Discord n’a été récupéré.

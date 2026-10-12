@@ -1,0 +1,6 @@
+{
+  "name": "kx-bot",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test" }
+}

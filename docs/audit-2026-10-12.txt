@@ -1,0 +1,131 @@
+AUDIT K’X DISCORD — 12 OCTOBRE 2026
+
+Périmètre
+Dépôt https://github.com/yanislieymahjoub-hue/kx-bot
+Révision de départ 114256ff0c2d008c7f44d644e118079ab059538a.
+Inspection du code et observations ponctuelles de Discord effectuées avant la demande
+d’arrêter de piloter les fenêtres. Pas de nouvel audit UI, pas d’accès aux secrets de
+production, pas de test avec un compte nouvel arrivant. Le compte rendu de Claude est
+une source de points à vérifier ; il ne prouve pas l’état actuel du serveur.
+
+CORRIGÉ DANS LA MODIFICATION PROPOSÉE, PAS ENCORE ACTIF SUR DISCORD
+
+1. Présentation contournable — priorité haute.
+   src/espaces.js, rejoindreFde, donnait Accès B dès le clic esp:fde, sans présentation
+   ni vérification de réussite de l’ajout du rôle. Remplacement par un formulaire,
+   publication confirmée puis rôle confirmé. Conservation de l’identifiant du message
+   pour les reprises, verrou par membre pour les doublons. Les membres déjà admis
+   restent admis. La qualité du texte reste à modérer.
+
+2. Conflit client/FDE contournable — priorité haute.
+   rejoindreFde ne bloquait que client/client_qualif, puis transformait le statut en
+   conflit. Un deuxième clic passait alors à travers le contrôle. Les trois statuts
+   sont désormais bloqués et une présentation en cours ne peut pas donner lieu à
+   une ouverture automatique du parcours entreprise.
+
+3. Contrôles incomplets sur les interactions — priorité haute.
+   Le filtrage commandeAutorisee s’appliquait aux commandes mais pas aux anciens
+   boutons et formulaires de candidature. Les actions FDE ont maintenant le même
+   contrôle côté serveur. Les rendez-vous des clients restent accessibles.
+
+4. Rôles en libre-service trop permissifs — défense supplémentaire.
+   Le gestionnaire role:* acceptait un nom de rôle sans le limiter à SELF_ROLES.
+   Désormais, il refuse tout rôle hors de cette liste. Les interactions étant signées
+   par Discord, ce constat ne prouve pas qu’un membre pouvait librement forger une
+   requête ou exploiter ce chemin dans l’interface actuelle.
+
+5. Réexécution de la migration — priorité haute.
+   prepAppliquer attribuait Accès B à tous les membres non clients récupérés, y compris
+   les nouveaux sans présentation. La synchronisation ne rétablit désormais que les
+   accès de membres déjà admis. Les anciens Accès B sans statut conservent les commandes.
+
+6. Formation — contenu ajouté.
+   L’Académie proposait candidatures, niveaux, ateliers et défis générés, mais aucun
+   catalogue de leçons. /formation ajoute six modules intermédiaires, 18 pages,
+   exercices avec données fictives et critères de revue. Pas de certification automatique.
+
+À CORRIGER OU VÉRIFIER ENSUITE
+
+P1 — Parcours entreprise : vérifier chaque réponse Discord et rendre la création des
+dossiers reprenable. creerDossierClient exploite les réponses comme des salons valides
+sans vérifier systématiquement res.ok. decisionClient met le statut à client et annonce
+la validation avant d’avoir confirmé tous les effets externes. Une erreur peut laisser
+un dossier partiel ou un succès affiché sans les droits attendus. Références src/espaces.js.
+
+P1 — Administrateur : le compte rendu indique que K’X Bot a encore Administrator.
+Cela n’a pas été revérifié en production. Préparer une matrice des opérations et droits
+avant retrait : gérer rôles sous le bot, salons/permissions, messages et fils, événements
+si utilisés, serveur si ses réglages sont modifiés. Les bots secondaires ont des besoins
+différents. BOT_PERMISSIONS seul ne couvre pas toutes les tâches du bot principal.
+Tester les droits salon par salon, sans supposer qu’un seul masque convient aux six bots.
+
+P1 — Cloisonnement réel : inspecter les dérogations individuelles et les autres rôles
+autorisant Voir le salon. Un formulaire ne répare pas une permission qui ouvre déjà le
+salon. Tester nouveau membre, FDE, client A, client B et équipe. Un serveur commun ne
+garantit pas l’invisibilité de l’existence des autres membres ni l’interdiction des DM.
+
+P2 — Modales sensibles : mission-modal revérifie insuffisamment la permission de gestion
+au moment de l’envoi. Une modale ouverte avant retrait du rôle peut rester utilisable.
+Revoir les contrôles d’auteur/propriétaire de ticket:close et rdv:prop, et les demandes
+simultanées entre parcours. Références src/fde.js et src/tickets.js.
+
+P2 — Erreurs et limites API : plusieurs actions anciennes confirment avant de connaître
+le résultat. Le wrapper discord n’a pas de stratégie générale de 429/retry. Ajouter des
+reprises bornées et idempotentes aux opérations critiques, sans relancer aveuglément
+les POST. Les listes de membres sont limitées à 1000 sans pagination.
+
+P2 — Informations publiques : /etat-travaux répond sans authentification avec le statut
+des travaux. Des détails d’erreur du job peuvent y apparaître. Vérifier le contenu réellement
+exposé avant d’en faire une page publique de suivi.
+
+P2 — Horaires : les crons sont en UTC fixe. Les annonces du README en heure de Paris
+ne resteront pas exactes toute l’année. Définir une politique été/hiver.
+
+P2 — Exploitation : pas de tests dans la révision de départ. La modification ajoute des
+tests locaux et les exécute avant le déploiement. La CI main lance aussi setup-bots.mjs,
+qui réorganise des rôles ; une fusion est donc une modification de production, pas
+seulement une publication de code.
+
+OBSERVATIONS UI ANTÉRIEURES, AUDIT PARTIEL
+
+- 51 rôles affichés lors de l’inspection. Le rôle Client affichait un membre à ce moment.
+  Cela ne démontre ni son usage actuel ni l’absence de dépendances. Ne pas le supprimer
+  uniquement sur la phrase « rien ne l’utilise » du compte rendu.
+- #présente-toi contenait le modèle de présentation et un message d’aide du bot musical.
+  Garder un modèle épinglé et retirer ce bruit lors d’un nettoyage autorisé.
+- Forum d’entraide doté de tags utiles : n8n, Make/Zapier, Python/JS, API, Agents IA,
+  Excel/VBA, Résolu. Sa configuration affichait 3/5 ; vérifier permissions et premier post.
+- Sept intégrations visibles, dont Jockie Music. Vérifier pour chacune les salons utiles
+  et les permissions, plutôt que multiplier les bots.
+- Arrivée guidée Discord désactivée : cohérent avec le choix de deux portes FDE/entreprise.
+  Ne pas la réactiver mécaniquement en parallèle du nouveau formulaire.
+
+NETTOYAGE SIGNALÉ PAR CLAUDE, NON EFFECTUÉ
+
+- Ancien rôle Client au-dessus du bot : membres et dépendances à vérifier avant suppression.
+- Deux invitations vers posez-vos-questions et détente : codes et usages à vérifier avant révocation.
+- Ancien message personnel dans #bienvenue : à relire et modifier avec le compte de son auteur.
+  Un bot ne peut pas réécrire le message d’un utilisateur. Aucun message n’a été supprimé ici.
+- Aucun nouveau comptage fiable de tous les membres ni test réel du parcours entreprise.
+
+SUITE PÉDAGOGIQUE PROPOSÉE
+
+Utiliser le catalogue et les salons existants avant d’en ajouter. Un rendu par fil avec
+outil choisi, objectif, résultat, test de panne et question précise. Un mentor fournit un
+retour sur la preuve et un exercice complémentaire adapté. Mesurer les présentations
+abouties, premiers rendus, retours reçus et difficultés récurrentes. Ne pas confondre
+nombre de messages, lecture d’une leçon et compétence acquise.
+
+Le portail de contrats, Yousign, Drive et les espaces M-xxxx restent un lot séparé. Aucune
+clé demandée ni intégration amorcée pendant cet audit. Les contrats et décisions juridiques
+nécessiteront leur propre validation ; les modules proposés utilisent des cas fictifs.
+
+RÉFÉRENCES CONSULTÉES
+Discord, interactions et réponses : https://docs.discord.com/developers/interactions/receiving-and-responding
+Discord, publication et nonce : https://docs.discord.com/developers/resources/message
+n8n, erreurs : https://docs.n8n.io/flow-logic/error-handling/
+HTTP : https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
+Python csv : https://docs.python.org/3/library/csv.html
+OWASP applications LLM : https://owasp.org/www-project-top-10-for-large-language-model-applications/
+
+Voir activation-presentation.txt pour la recette réelle, les limites et le retour arrière.

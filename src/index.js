@@ -13,6 +13,8 @@ import { tourStep, tourLoading, TOUR, V2, botCard, INTRO_CMD } from "./guide.js"
 export { KXStore } from "./store.js";
 import { setJobRunner } from "./store.js";
 import { etapeTravail } from "./jobs.js";
+import { submitPresentation } from './presentation.js';
+import { trainingReply } from './training.js';
 
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
@@ -86,7 +88,9 @@ async function ask(env, messages, max_tokens = 1200) {
 async function handleCommand(interaction, env, ctx) {
   const name = interaction.data.name;
   const user = interaction.member?.user ?? interaction.user;
-  if (!(await commandeAutorisee(interaction, env, name))) return reply({ content: "Cette commande n'est pas disponible dans ton espace." }, true);
+  if (!(await commandeAutorisee(interaction, env, name, helpers))) return reply({ content: "Cette commande n'est pas disponible dans ton espace." }, true);
+  if (name === 'presentation') return rejoindreFde(interaction, env, helpers);
+  if (name === 'formation') return reply(trainingReply(opt(interaction, 'module')), true);
 
   if (name === "kx-espaces") {
     if (!isCoord(interaction) || (BigInt(interaction.member.permissions) & 8n) !== 8n) return reply({ content: "Réservé aux administrateurs." }, true);
@@ -296,6 +300,13 @@ async function animateTour(interaction, n, intro) {
 // ------------------------------------------------------------ boutons et formulaires
 async function handleComponent(interaction, env, ctx) {
   const id = interaction.data.custom_id;
+  const publicAction = id.startsWith('tour:') || ['esp:fde', 'esp:client'].includes(id);
+  if (!publicAction && !(await commandeAutorisee(interaction, env, id.startsWith('rdv:') ? 'rdv' : 'formation', helpers))) return reply({ content: 'Cet accès est réservé aux membres admis. Présente-toi avec `/presentation` ou contacte l’équipe.' }, true);
+  if (id.startsWith('formation:')) {
+    const [, module, page] = id.split(':');
+    const data = trainingReply(module === 'catalogue' ? undefined : module, Number(page));
+    return interaction.message?.flags & EPHEMERAL ? json({ type: 7, data }) : reply(data, true);
+  }
   if (id.startsWith("tour:")) {
     const n = Math.min(Math.max(Number(id.slice(5)) || 1, 1), TOUR.length);
     const inTour = (interaction.message?.flags ?? 0) & EPHEMERAL;
@@ -311,6 +322,7 @@ async function handleComponent(interaction, env, ctx) {
   if (ticket) return ticket;
   if (id.startsWith("role:")) {
     const label = id.slice(5);
+    if (!SELF_ROLES.some(([name]) => name === label)) return reply({ content: 'Ce rôle ne peut pas être choisi librement.' }, true);
     const roles = await (await discord(env, "GET", `/guilds/${GUILD_ID}/roles`)).json();
     const role = roles.find((r) => r.name === label);
     if (!role) return reply({ content: "Rôle introuvable, préviens l'équipe." }, true);
@@ -328,7 +340,9 @@ async function handleComponent(interaction, env, ctx) {
 }
 
 async function handleModal(interaction, env, ctx) {
+  if (interaction.data.custom_id === 'presentation-modal') return submitPresentation(interaction, env, ctx, helpers);
   if (interaction.data.custom_id === "client-modal") return demandeClient(interaction, env, ctx, helpers);
+  if (interaction.data.custom_id !== 'contact-modal' && !(await commandeAutorisee(interaction, env, interaction.data.custom_id.startsWith('rdv-modal:') ? 'rdv' : 'formation', helpers))) return reply({ content: 'Cet accès nécessite une présentation et une admission dans l’espace FDE.' }, true);
   const ticket = await handleTicketModal(interaction, env, ctx, helpers, parisToUtc);
   if (ticket) return ticket;
   if (interaction.data.custom_id !== "contact-modal") {
@@ -410,6 +424,7 @@ export default {
     const body = await request.text();
     if (!key || !(await verify(request, body, key))) return new Response("Signature invalide", { status: 401 });
     const interaction = JSON.parse(body);
+    if (interaction.type !== 1 && (interaction.guild_id !== GUILD_ID || !interaction.member?.user)) return reply({ content: 'Utilise cette action sur le serveur K’X.' }, true);
     switch (interaction.type) {
       case 1: return json({ type: 1 }); // PING
       case 2: return handleCommand(interaction, env, ctx);
