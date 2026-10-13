@@ -25,6 +25,7 @@ Animations: les bannières GIF sont rendues depuis `design/*.html` avec `node de
 | `/contact` | tous | Formulaire envoyé dans #staff (et dans la CT si `CT_WEBHOOK_URL` est rempli) |
 | `/suggestion idee` | tous | Sondage Pour/Contre dans #suggestions |
 | `/annonce` | équipe | Annonce mise en forme dans #annonces |
+| `/clear nombre:50` | Gérer les messages | Supprime les messages récents non épinglés parmi les 50 derniers du salon courant (1–100, 100 par défaut), confirmation privée |
 | `/kx-roles` | équipe | Panneau de boutons Notif lives / Notif annonces |
 | `/aide` | tous | Liste des commandes |
 | `/candidature` | tous | Candidature au parcours FDE, passe Apprenti, arrive dans #staff avec boutons Valider / Certifier / Refuser |
@@ -51,6 +52,14 @@ Animations: les bannières GIF sont rendues depuis `design/*.html` avec `node de
 Tâches automatiques: veille IA toutes les heures, défi IA + fil « build in public » chaque lundi à 9h, top contributeurs chaque dimanche à 18h.
 
 Mémoire (points, quiz, quotas IA): Durable Object SQLite `KXStore`, gratuit.
+
+## Nettoyage d’un salon
+
+`/clear` examine les 100 derniers messages antérieurs à la commande; `/clear nombre:20` en examine 20. Les épinglés, les messages non supprimables et ceux de plus de 14 jours (avec une minute de marge) sont conservés. Un message envoyé après la commande reste en place.
+
+Le membre doit avoir **Gérer les messages** dans le salon, ou **Administrateur**. K’X Bot doit avoir **Voir le salon**, **Voir les anciens messages** et **Gérer les messages**, ou Administrateur. Les permissions effectives du salon sont contrôlées à chaque appel, indépendamment du statut FDE/client. Aucun droit supplémentaire n’est donné aux autres bots.
+
+La commande agit uniquement dans le salon courant et la confirmation est privée. Aucun test ne supprime de messages sur le vrai serveur.
 
 ## Secrets (jamais dans le code)
 Dans GitHub → Settings → Secrets and variables → Actions:

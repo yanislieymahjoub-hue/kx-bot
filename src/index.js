@@ -15,6 +15,7 @@ import { setJobRunner } from "./store.js";
 import { etapeTravail } from "./jobs.js";
 import { submitPresentation } from './presentation.js';
 import { trainingReply } from './training.js';
+import { handleClear } from './clear.js';
 
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
@@ -88,6 +89,7 @@ async function ask(env, messages, max_tokens = 1200) {
 async function handleCommand(interaction, env, ctx) {
   const name = interaction.data.name;
   const user = interaction.member?.user ?? interaction.user;
+  if (name === 'clear') return handleClear(interaction, env, ctx, helpers);
   if (!(await commandeAutorisee(interaction, env, name, helpers))) return reply({ content: "Cette commande n'est pas disponible dans ton espace." }, true);
   if (name === 'presentation') return rejoindreFde(interaction, env, helpers);
   if (name === 'formation') return reply(trainingReply(opt(interaction, 'module')), true);

@@ -6,7 +6,7 @@ export const BOTS = {
   kx: {
     name: "K’X Bot", path: "/", id: "1558510006364545074", color: 0x8b5cf6, logo: "bot",
     about: "L'assistant de la communauté K’X Automatisation. Accueil, contact, tickets et réglages. Tape /aide pour tout voir.",
-    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut", "presentation"],
+    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut", "presentation", "clear"],
   },
   ia: {
     name: "K’X IA", path: "/ia", color: 0x22d3ee, logo: "ia",

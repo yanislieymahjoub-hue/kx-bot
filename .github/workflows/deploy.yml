@@ -68,5 +68,8 @@ jobs:
       - name: Configurer les bots et leurs commandes
         run: node scripts/setup-bots.mjs
 
+      - name: Vérifier la commande clear et les permissions Discord
+        run: node scripts/verify-clear.mjs
+
       - name: Activer et vérifier l’accueil et les formations
         run: node scripts/activate-onboarding.mjs

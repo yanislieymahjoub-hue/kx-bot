@@ -73,6 +73,7 @@ const DOCS = {
     "`/roi` Calcule le temps et l'argent qu'une automatisation fait gagner en un an",
     "`/ticket` Ouvre un fil privé avec l'équipe, avec prise de rendez-vous en vocal pour les candidatures",
     "`/suggestion` Propose une idée, la communauté vote pendant 3 jours",
+    "`/clear nombre:50` Nettoie les 50 derniers messages du salon. Réservé aux membres avec Gérer les messages; épinglés et messages de plus de 14 jours conservés. Sans nombre, examine 100 messages 🔒",
     "-# Équipe · `/annonce` `/kx-roles` `/kx-setup` `/kx-publier`",
   ]],
   ia: ["Questions, résumés et relectures", [
