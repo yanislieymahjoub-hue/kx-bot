@@ -7,6 +7,7 @@ import { GUILD_ID, ASSETS_URL } from "../src/config.js";
 import { COMMANDS } from "./commands.mjs";
 import { ensureRoles } from "../src/roles.js";
 import { CHANNELS } from "../src/config.js";
+import { commandOwner } from './command-routing.mjs';
 
 const API = "https://discord.com/api/v10";
 const tokenOf = (k) => (k === "kx" ? process.env.DISCORD_BOT_TOKEN : process.env[`DISCORD_TOKEN_${k.toUpperCase()}`]);
@@ -16,7 +17,7 @@ const call = async (token, method, path, body) => {
   return { ok: res.ok, status: res.status, data };
 };
 const logo = (k) => `data:image/png;base64,${fs.readFileSync(new URL(`../public/bots/${BOTS[k].logo}.png`, import.meta.url)).toString("base64")}`;
-const invite = (id) => `https://discord.com/oauth2/authorize?client_id=${id}&scope=bot+applications.commands&permissions=${BOT_PERMISSIONS}&guild_id=${GUILD_ID}&disable_guild_select=true`;
+const invite = (id, permissions = BOT_PERMISSIONS) => `https://discord.com/oauth2/authorize?client_id=${id}&scope=bot+applications.commands&permissions=${permissions}&guild_id=${GUILD_ID}&disable_guild_select=true`;
 
 const ready = {};
 for (const [k, b] of Object.entries(BOTS)) {
@@ -31,7 +32,7 @@ for (const [k, b] of Object.entries(BOTS)) {
     const patch = {
       description: b.about,
       interactions_endpoint_url: ASSETS_URL + b.path,
-      install_params: { scopes: ["bot", "applications.commands"], permissions: String(BOT_PERMISSIONS) },
+      install_params: { scopes: ["bot", "applications.commands"], permissions: String(b.permissions ?? BOT_PERMISSIONS) },
       ...(app.data.icon ? {} : { icon: logo(k) }),
     };
     const r = await call(token, "PATCH", "/applications/@me", patch);
@@ -52,7 +53,7 @@ for (const [k, b] of Object.entries(BOTS)) {
 
   const guilds = await call(token, "GET", "/users/@me/guilds");
   if (!guilds.ok || !guilds.data.some((g) => g.id === GUILD_ID)) {
-    console.log(`· ${b.name}: pas encore sur le serveur, lien d'invitation ${invite(app.data.id)}`);
+    console.log(`· ${b.name}: pas encore sur le serveur, lien d'invitation ${invite(app.data.id, b.permissions)}`);
     continue;
   }
   ready[k] = { token, id: app.data.id };
@@ -62,10 +63,8 @@ if (!ready.kx) { console.log("K’X Bot indisponible, commandes non enregistrée
 
 // répartition des commandes
 const owner = {};
-for (const [k, b] of Object.entries(BOTS)) for (const name of b.commands) owner[name] = ready[k] ? k : "kx";
-const missing = COMMANDS.filter((c) => !owner[c.name]).map((c) => c.name);
-if (missing.length) console.log("Commandes sans bot (ajoutées à K’X Bot):", missing.join(", "));
-for (const c of COMMANDS) owner[c.name] ??= "kx";
+for (const c of COMMANDS) owner[c.name] = commandOwner(c.name, ready);
+if (tokenOf('moderation') && !ready.moderation) throw new Error('KX Modération doit être invité avant de déplacer les commandes.');
 
 let failed = false;
 for (const [k, r] of Object.entries(ready)) {
@@ -73,6 +72,7 @@ for (const [k, r] of Object.entries(ready)) {
   const res = await call(r.token, "PUT", `/applications/${r.id}/guilds/${GUILD_ID}/commands`, list);
   console.log(`${res.ok ? "✓" : "✗"} ${BOTS[k].name}: ${list.length} commandes${res.ok ? "" : ` (${res.status} ${JSON.stringify(res.data).slice(0, 300)})`}`);
   if (!res.ok) failed = true;
+  if (!res.ok && k === 'moderation') throw new Error('Enregistrement Modération échoué; commandes KX Bot conservées.');
 }
 // rôles du serveur et droits de chaque bot dans ses salons (avec le jeton de K’X Bot)
 const kx = ready.kx;

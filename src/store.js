@@ -24,9 +24,27 @@ export class KXStore {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS journal (ts INTEGER, quoi TEXT, ref TEXT, par TEXT, cible TEXT, detail TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS rdv (thread TEXT, owner TEXT, ts INTEGER, reminded INTEGER DEFAULT 0, PRIMARY KEY (thread, ts))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS introduction (user TEXT PRIMARY KEY, message TEXT, lock TEXT, updated INTEGER)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS moderation (id TEXT PRIMARY KEY, user TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL, ts INTEGER NOT NULL)`);
   }
 
   rows(q, ...b) { return this.sql.exec(q, ...b).toArray(); }
+
+  modClaim({ id, user, actor, action, reason }) {
+    if (this.rows('SELECT id FROM moderation WHERE id = ?', id).length) return { ok: false };
+    this.sql.exec('INSERT INTO moderation (id, user, actor, action, reason, status, ts) VALUES (?, ?, ?, ?, ?, ?, ?)', id, user, actor, action, reason, 'pending', Date.now());
+    return { ok: true };
+  }
+  modComplete({ id, status }) {
+    if (!['done', 'failed', 'uncertain'].includes(status)) return { ok: false };
+    this.sql.exec("UPDATE moderation SET status = ? WHERE id = ? AND status = 'pending'", status, id);
+    return { ok: true };
+  }
+  modHistory({ user }) { return this.rows('SELECT * FROM moderation WHERE user = ? ORDER BY ts DESC, rowid DESC LIMIT 10', user); }
+  modRevokeWarn({ id, user }) {
+    if (!this.rows("SELECT id FROM moderation WHERE id = ? AND user = ? AND action = 'warn' AND status = 'done'", id, user).length) return { ok: false };
+    this.sql.exec("UPDATE moderation SET status = 'revoked' WHERE id = ?", id);
+    return { ok: true };
+  }
 
   // Synchronous DO operations serialize admission attempts for the same member.
   // No automatic lease expiry: a crashed publication needs staff reconciliation,

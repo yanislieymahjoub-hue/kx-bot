@@ -34,12 +34,13 @@ jobs:
           RAW_DISCORD_TOKEN_MISSIONS: ${{ secrets.DISCORD_TOKEN_MISSIONS }}
           RAW_DISCORD_TOKEN_ARENE: ${{ secrets.DISCORD_TOKEN_ARENE }}
           RAW_DISCORD_TOKEN_VEILLE: ${{ secrets.DISCORD_TOKEN_VEILLE }}
+          RAW_DISCORD_TOKEN_MODERATION: ${{ secrets.DISCORD_TOKEN_MODERATION }}
         run: |
           CF=$(printf '%s' "$RAW_CF" | sed 's/^[[:space:]]*Bearer[[:space:]]*//' | tr -d '[:space:]\"')
           echo "::add-mask::$CF"
           case "$CF" in *[!A-Za-z0-9_-]*) echo "Le jeton Cloudflare contient des caractères inattendus"; exit 1;; esac
           echo "CLOUDFLARE_API_TOKEN=$CF" >> "$GITHUB_ENV"
-          for NAME in DISCORD_BOT_TOKEN DISCORD_TOKEN_IA DISCORD_TOKEN_ACADEMIE DISCORD_TOKEN_MISSIONS DISCORD_TOKEN_ARENE DISCORD_TOKEN_VEILLE; do
+          for NAME in DISCORD_BOT_TOKEN DISCORD_TOKEN_IA DISCORD_TOKEN_ACADEMIE DISCORD_TOKEN_MISSIONS DISCORD_TOKEN_ARENE DISCORD_TOKEN_VEILLE DISCORD_TOKEN_MODERATION; do
             RAW_VAR="RAW_$NAME"
             T=$(printf '%s' "${!RAW_VAR}" | sed 's/^[[:space:]]*Bot[[:space:]]*//' | tr -d '[:space:]\"')
             if [ -n "$T" ]; then
@@ -61,12 +62,15 @@ jobs:
         run: |
           umask 077
           F="$RUNNER_TEMP/secrets.json"
-          node -e 'const n=["DISCORD_BOT_TOKEN","DISCORD_TOKEN_IA","DISCORD_TOKEN_ACADEMIE","DISCORD_TOKEN_MISSIONS","DISCORD_TOKEN_ARENE","DISCORD_TOKEN_VEILLE"];const o={};for(const k of n)if(process.env[k])o[k]=process.env[k];require("fs").writeFileSync(process.argv[1],JSON.stringify(o))' "$F"
+          node -e 'const n=["DISCORD_BOT_TOKEN","DISCORD_TOKEN_IA","DISCORD_TOKEN_ACADEMIE","DISCORD_TOKEN_MISSIONS","DISCORD_TOKEN_ARENE","DISCORD_TOKEN_VEILLE","DISCORD_TOKEN_MODERATION"];const o={};for(const k of n)if(process.env[k])o[k]=process.env[k];require("fs").writeFileSync(process.argv[1],JSON.stringify(o))' "$F"
           npx --yes wrangler@4 secret bulk "$F"
           rm -f "$F"
 
       - name: Configurer les bots et leurs commandes
         run: node scripts/setup-bots.mjs
+
+      - name: Configurer et vérifier le bot de modération
+        run: node scripts/setup-moderation.mjs
 
       - name: Vérifier la commande clear et les permissions Discord
         run: node scripts/verify-clear.mjs

@@ -11,7 +11,7 @@ const hasPermissions = (value, required) => {
 };
 
 export function handleClear(i, env, ctx, h) {
-  if (i.guild_id !== h.GUILD_ID || !i.channel_id || i.application_id !== BOTS.kx.id) {
+  if (i.guild_id !== h.GUILD_ID || !i.channel_id || ![BOTS.kx.id, BOTS.moderation.id].includes(i.application_id)) {
     return h.reply({ content: 'Utilise /clear avec K’X Bot dans un salon du serveur K’X.' }, true);
   }
   if (!hasPermissions(i.member?.permissions, MANAGE_MESSAGES)) {
@@ -22,7 +22,7 @@ export function handleClear(i, env, ctx, h) {
     return h.reply({ content: 'Choisis un nombre entier entre 1 et 100.' }, true);
   }
   if (!hasPermissions(i.app_permissions, REQUIRED_BOT)) {
-    return h.reply({ content: 'K’X Bot a besoin de « Voir le salon », « Voir les anciens messages » et « Gérer les messages » dans ce salon.' }, true);
+    return h.reply({ content: `${i.application_id === BOTS.moderation.id ? 'KX Modération' : 'K’X Bot'} a besoin de « Voir le salon », « Voir les anciens messages » et « Gérer les messages » dans ce salon.` }, true);
   }
   ctx.waitUntil(clearMessages(i, env, count, h));
   return h.json({ type: 5, data: { flags: h.EPHEMERAL } });
@@ -51,7 +51,7 @@ async function clearMessages(i, env, count, h) {
     if (messages.length > ids.length) content += ' Les messages épinglés, trop anciens (14 jours, avec une minute de marge) ou non supprimables sont conservés.';
   } catch (error) {
     content = error.status === 403
-      ? 'Action refusée par Discord. Vérifie les permissions de K’X Bot dans ce salon.'
+      ? `Action refusée par Discord. Vérifie les permissions de ${i.application_id === BOTS.moderation.id ? 'KX Modération' : 'K’X Bot'} dans ce salon.`
       : error.status === 429
         ? 'Discord impose une limite temporaire. Réessaie dans quelques instants.'
         : 'Nettoyage impossible à confirmer. Vérifie le salon avant de réessayer.';

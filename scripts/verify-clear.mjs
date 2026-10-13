@@ -3,9 +3,9 @@ import { BOTS } from '../src/bots.js';
 import { GUILD_ID } from '../src/config.js';
 
 // Contrôle en lecture seule après l'enregistrement de la commande.
-export async function verifyClear(api) {
+export async function verifyClear(api, botId = BOTS.kx.id) {
   const me = await api('GET', '/users/@me');
-  if (me.id !== BOTS.kx.id) throw new Error('Identité de KX Bot inattendue');
+  if (me.id !== botId) throw new Error('Identité du bot inattendue');
   const commands = await api('GET', `/applications/${me.id}/guilds/${GUILD_ID}/commands`);
   const command = commands.find(c => c.name === 'clear');
   const count = command?.options?.find(o => o.name === 'nombre');
@@ -37,7 +37,7 @@ export async function verifyClear(api) {
 }
 
 async function main() {
-  const token = process.env.DISCORD_BOT_TOKEN;
+  const token = process.env.DISCORD_TOKEN_MODERATION || process.env.DISCORD_BOT_TOKEN;
   if (!token) throw new Error('DISCORD_BOT_TOKEN manquant');
   const api = async (method, path) => {
     for (let attempt = 0; attempt < 4; attempt++) {
@@ -51,6 +51,6 @@ async function main() {
       return res.json();
     }
   };
-  console.log('CLEAR_VERIFIED', JSON.stringify(await verifyClear(api)));
+  console.log('CLEAR_VERIFIED', JSON.stringify(await verifyClear(api, process.env.DISCORD_TOKEN_MODERATION ? BOTS.moderation.id : BOTS.kx.id)));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(e => { console.error(e.message); process.exitCode = 1; });

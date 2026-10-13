@@ -2,11 +2,20 @@
 // L'identifiant et la clé publique ne sont pas secrets. Le jeton de chaque bot est un secret GitHub (DISCORD_TOKEN_<CLÉ>).
 // Tant qu'un bot n'a pas de jeton, ses commandes restent sur K’X Bot.
 
+import { MOD_COMMAND_NAMES, MOD_BOT_PERMISSIONS } from './moderation-policy.js';
 export const BOTS = {
+  moderation: {
+    name: 'KX Modération', path: '/moderation', id: '1559521331530178562',
+    publicKey: '962a9586e017a75316b70296439ea7ae36514a7391d5c2e7f5e8f889cbb00f4e',
+    color: 0x9a6bff, logo: 'moderation', permissions: MOD_BOT_PERMISSIONS,
+    about: 'Modération du serveur KX. Nettoyage, sanctions, avertissements et historique privé. Commandes réservées à l’équipe.',
+    commands: MOD_COMMAND_NAMES,
+    dedicated: true,
+  },
   kx: {
     name: "K’X Bot", path: "/", id: "1558510006364545074", color: 0x8b5cf6, logo: "bot",
     about: "L'assistant de la communauté K’X Automatisation. Accueil, contact, tickets et réglages. Tape /aide pour tout voir.",
-    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut", "presentation", "clear"],
+    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut", "presentation"],
   },
   ia: {
     name: "K’X IA", path: "/ia", color: 0x22d3ee, logo: "ia",

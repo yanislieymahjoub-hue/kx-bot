@@ -16,6 +16,8 @@ import { etapeTravail } from "./jobs.js";
 import { submitPresentation } from './presentation.js';
 import { trainingReply } from './training.js';
 import { handleClear } from './clear.js';
+import { handleModeration } from './moderation.js';
+import { MOD_COMMAND_NAMES } from './moderation-policy.js';
 
 const API = "https://discord.com/api/v10";
 const VIOLET = 0x8b5cf6, LILAS = 0xb69cff, AMBRE = 0xf5b83d;
@@ -89,6 +91,7 @@ async function ask(env, messages, max_tokens = 1200) {
 async function handleCommand(interaction, env, ctx) {
   const name = interaction.data.name;
   const user = interaction.member?.user ?? interaction.user;
+  if (MOD_COMMAND_NAMES.includes(name) && (name !== 'clear' || interaction.application_id === BOTS.moderation.id)) return handleModeration(interaction, env, ctx, helpers);
   if (name === 'clear') return handleClear(interaction, env, ctx, helpers);
   if (!(await commandeAutorisee(interaction, env, name, helpers))) return reply({ content: "Cette commande n'est pas disponible dans ton espace." }, true);
   if (name === 'presentation') return rejoindreFde(interaction, env, helpers);
@@ -426,6 +429,7 @@ export default {
     const body = await request.text();
     if (!key || !(await verify(request, body, key))) return new Response("Signature invalide", { status: 401 });
     const interaction = JSON.parse(body);
+    if (bot === 'moderation' && interaction.type !== 1 && (interaction.application_id !== BOTS.moderation.id || interaction.type !== 2 || !MOD_COMMAND_NAMES.includes(interaction.data?.name))) return reply({ content: 'Cette application est réservée aux commandes de modération.' }, true);
     if (interaction.type !== 1 && (interaction.guild_id !== GUILD_ID || !interaction.member?.user)) return reply({ content: 'Utilise cette action sur le serveur K’X.' }, true);
     switch (interaction.type) {
       case 1: return json({ type: 1 }); // PING

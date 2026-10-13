@@ -35,13 +35,13 @@ async function run(t, { options, permissions = '8192', appPermissions = '74752',
 }
 const deletes = r => r.calls.filter(c => ['DELETE', 'POST'].includes(c.method));
 
-test('clear is registered only on KX Bot with moderation permissions and bounded count', () => {
+test('clear is registered only on KX Modération with moderation permissions and bounded count', () => {
   const c = COMMANDS.find(c => c.name === 'clear');
   assert.ok(c);
   assert.equal(c.default_member_permissions, '8192');
   assert.equal(c.dm_permission, false);
   assert.deepEqual(c.options.map(o => [o.name, o.type, o.min_value, o.max_value]), [['nombre', 4, 1, 100]]);
-  assert.deepEqual(Object.keys(BOTS).filter(k => BOTS[k].commands.includes('clear')), ['kx']);
+  assert.deepEqual(Object.keys(BOTS).filter(k => BOTS[k].commands.includes('clear')), ['moderation']);
 });
 
 test('clear deletes only recent unpinned messages before invocation, with a private result', async t => {
