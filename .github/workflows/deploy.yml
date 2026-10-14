@@ -77,3 +77,6 @@ jobs:
 
       - name: Activer et vérifier l’accueil et les formations
         run: node scripts/activate-onboarding.mjs
+
+      - name: Configurer et vérifier les actualités publiques
+        run: node scripts/setup-news.mjs

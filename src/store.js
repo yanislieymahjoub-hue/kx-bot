@@ -17,6 +17,7 @@ export class KXStore {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS quiz_try (id TEXT, user TEXT, PRIMARY KEY (id, user))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS ai_usage (user TEXT, day TEXT, n INTEGER, PRIMARY KEY (user, day))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS news_articles (url TEXT PRIMARY KEY, status TEXT NOT NULL, ts INTEGER NOT NULL, message TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, owner TEXT UNIQUE, seen INTEGER DEFAULT 0)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS invite_awards (owner TEXT, week TEXT, n INTEGER, PRIMARY KEY (owner, week))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS statut (user TEXT PRIMARY KEY, statut TEXT, ref TEXT, updated INTEGER)`);
@@ -28,6 +29,41 @@ export class KXStore {
   }
 
   rows(q, ...b) { return this.sql.exec(q, ...b).toArray(); }
+
+  newsAcquire({ lock, now }) {
+    const current = JSON.parse(this.setting({ key: 'news_lock' }).value || 'null');
+    if (current && current.until > now) return { ok: false };
+    this.setting({ key: 'news_lock', value: JSON.stringify({ lock, until: now + 300000 }) });
+    return { ok: true };
+  }
+  newsRelease({ lock }) {
+    const current = JSON.parse(this.setting({ key: 'news_lock' }).value || 'null');
+    if (current?.lock === lock) this.setting({ key: 'news_lock', value: 'null' });
+    return { ok: true };
+  }
+  newsInitialize({ skip, now }) {
+    if (this.setting({ key: 'news_initialized' }).value) return { ok: false };
+    for (const url of skip) this.sql.exec('INSERT OR IGNORE INTO news_articles (url, status, ts) VALUES (?, ?, ?)', url, 'skipped', now);
+    this.setting({ key: 'news_initialized', value: now });
+    return { ok: true };
+  }
+  newsClaim({ url, now }) {
+    if (this.rows('SELECT url FROM news_articles WHERE url = ?', url).length) return { ok: false };
+    this.sql.exec('INSERT INTO news_articles (url, status, ts) VALUES (?, ?, ?)', url, 'pending', now);
+    return { ok: true };
+  }
+  newsEligible({ urls }) {
+    return urls.filter(url => !this.rows('SELECT url FROM news_articles WHERE url = ?', url).length).slice(0, 3);
+  }
+  newsComplete({ url, status, message }) {
+    if (status === 'retry') this.sql.exec("DELETE FROM news_articles WHERE url = ? AND status = 'pending'", url);
+    if (status === 'sent' && message) this.sql.exec("UPDATE news_articles SET status = 'sent', message = ? WHERE url = ? AND status = 'pending'", message, url);
+    return { ok: true };
+  }
+  newsStatus() {
+    return { published: this.rows("SELECT COUNT(*) AS n FROM news_articles WHERE status = 'sent'")[0].n,
+      uncertain: this.rows("SELECT COUNT(*) AS n FROM news_articles WHERE status = 'pending'")[0].n };
+  }
 
   modClaim({ id, user, actor, action, reason }) {
     if (this.rows('SELECT id FROM moderation WHERE id = ?', id).length) return { ok: false };

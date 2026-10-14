@@ -1,5 +1,6 @@
 // K’X Bot, version Cloudflare Worker (interactions HTTP Discord + IA Workers AI)
-import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, RSS_FEEDS, AI_MODEL, AI_SYSTEM, LADDER, MENTOR_ROLE, DEFI_PROMPT } from "./config.js";
+import { GUILD_ID, CHANNELS, SELF_ROLES, RDV_URL, AI_MODEL, AI_SYSTEM, LADDER, MENTOR_ROLE, DEFI_PROMPT } from "./config.js";
+import { latestNews, runNews, handleNewsComponent } from './news.js';
 import { handleFde, handleFdeComponent, handleFdeModal, postDefi } from "./fde.js";
 import { handleFeatures, handleFeaturesComponent, handleFeaturesModal, weeklyLeaderboard, buildInPublic } from "./features.js";
 import { runPublish } from "./publish.js";
@@ -93,6 +94,17 @@ async function handleCommand(interaction, env, ctx) {
   const user = interaction.member?.user ?? interaction.user;
   if (MOD_COMMAND_NAMES.includes(name) && (name !== 'clear' || interaction.application_id === BOTS.moderation.id)) return handleModeration(interaction, env, ctx, helpers);
   if (name === 'clear') return handleClear(interaction, env, ctx, helpers);
+  if (name === 'actualites') {
+    if ((BigInt(interaction.member?.permissions ?? '0') & 8n) !== 8n) return reply({ content: 'Commande réservée aux administrateurs.' }, true);
+    ctx.waitUntil((async () => {
+      try {
+        const result = await runNews(env, helpers);
+        const content = result.busy ? 'Une publication est déjà en cours.' : result.missing ? 'Le salon actualité doit être configuré par le déploiement.' : `${result.sent} article(s) publié(s) dans <#${result.channel}>. ${result.published} au total ; ${result.uncertain} livraison(s) à vérifier.`;
+        await followUp(env, interaction, { content });
+      } catch (e) { console.error('NEWS_RUN_FAILED', e.message); await followUp(env, interaction, { content: 'La veille a rencontré une erreur. Vérifie les journaux du Worker ; les articles déjà publiés sont conservés.' }); }
+    })());
+    return json({ type: 5, data: { flags: EPHEMERAL } });
+  }
   if (!(await commandeAutorisee(interaction, env, name, helpers))) return reply({ content: "Cette commande n'est pas disponible dans ton espace." }, true);
   if (name === 'presentation') return rejoindreFde(interaction, env, helpers);
   if (name === 'formation') return reply(trainingReply(opt(interaction, 'module')), true);
@@ -260,7 +272,7 @@ async function handleCommand(interaction, env, ctx) {
   if (name === "veille") {
     ctx.waitUntil((async () => {
       const items = (await latestNews(6)).map((it) => `**[${it.title.slice(0, 120)}](${it.link})**\n*${it.source}*${it.date ? ` · <t:${Math.floor(it.date / 1000)}:R>` : ""}`);
-      await followUp(env, interaction, { embeds: [{ color: BOTS.veille.color, title: "Les dernières actus IA", description: items.join("\n\n") || "Aucune actu récupérée pour l'instant, réessaie plus tard.", footer: { text: "K’X Veille · publiée aussi chaque heure dans le salon veille" } }] });
+      await followUp(env, interaction, { embeds: [{ color: BOTS.veille.color, title: "Les dernières actus IA & tech", description: items.join("\n\n") || "Aucune actu récupérée pour l'instant, réessaie plus tard.", footer: { text: "K’X Veille · vérification horaire dans le salon actualité" } }] });
     })());
     return json({ type: 5, data: { flags: EPHEMERAL } });
   }
@@ -305,6 +317,7 @@ async function animateTour(interaction, n, intro) {
 // ------------------------------------------------------------ boutons et formulaires
 async function handleComponent(interaction, env, ctx) {
   const id = interaction.data.custom_id;
+  if (id.startsWith('news:')) return handleNewsComponent(interaction, env, ctx, helpers);
   const publicAction = id.startsWith('tour:') || ['esp:fde', 'esp:client'].includes(id);
   if (!publicAction && !(await commandeAutorisee(interaction, env, id.startsWith('rdv:') ? 'rdv' : 'formation', helpers))) return reply({ content: 'Cet accès est réservé aux membres admis. Présente-toi avec `/presentation` ou contacte l’équipe.' }, true);
   if (id.startsWith('formation:')) {
@@ -375,43 +388,6 @@ async function handleModal(interaction, env, ctx) {
   return reply({ content: "Merci, ta demande est bien arrivée. L'équipe K’X revient vers toi rapidement." }, true);
 }
 
-// ------------------------------------------------------------ veille IA (cron)
-function parseFeed(xml) {
-  const items = [];
-  const blocks = xml.match(/<item[\s\S]*?<\/item>|<entry[\s\S]*?<\/entry>/g) ?? [];
-  for (const b of blocks) {
-    const pick = (re) => (b.match(re)?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
-    const title = pick(/<title[^>]*>([\s\S]*?)<\/title>/);
-    const link = pick(/<link>([\s\S]*?)<\/link>/) || (b.match(/<link[^>]*href="([^"]+)"/)?.[1] ?? "");
-    const date = pick(/<pubDate>([\s\S]*?)<\/pubDate>/) || pick(/<published>([\s\S]*?)<\/published>/) || pick(/<updated>([\s\S]*?)<\/updated>/);
-    if (title && link) items.push({ title, link, date: date ? new Date(date) : null });
-  }
-  return items;
-}
-
-async function latestNews(n) {
-  const all = [];
-  await Promise.all(RSS_FEEDS.map(async (url) => {
-    try {
-      const xml = await (await fetch(url, { headers: { "user-agent": "KX-Bot/1.0" } })).text();
-      for (const it of parseFeed(xml).slice(0, 10)) all.push({ ...it, source: new URL(url).hostname.replace(/^www\./, "") });
-    } catch (e) {
-      console.log("Flux indisponible", url, e.message);
-    }
-  }));
-  return all.filter((it) => it.date && !isNaN(it.date)).sort((a, b) => b.date - a.date).slice(0, n);
-}
-
-async function veille(env) {
-  const since = Date.now() - 60 * 60 * 1000; // dernière heure, le cron tourne toutes les heures
-  for (const it of (await latestNews(30)).reverse()) {
-    if (it.date.getTime() < since) continue;
-    await discord(env, "POST", `/channels/${CHANNELS.veille_ia}/messages`, {
-      embeds: [{ title: it.title.slice(0, 250), url: it.link, color: BOTS.veille.color, footer: { text: it.source }, timestamp: it.date.toISOString() }],
-    }, "veille");
-  }
-}
-
 // ------------------------------------------------------------ point d'entrée
 export default {
   async fetch(request, env, ctx) {
@@ -442,7 +418,7 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === "0 7 * * MON") ctx.waitUntil(Promise.all([postDefi(env, helpers), buildInPublic(env, helpers)]));
     else if (event.cron === "0 16 * * SUN") ctx.waitUntil(weeklyLeaderboard(env, helpers));
-    else ctx.waitUntil(Promise.all([veille(env), rdvReminders(env, helpers), syncInvites(env, helpers)]));
+    else ctx.waitUntil(Promise.all([runNews(env, helpers).then(r => console.log('NEWS_RUN', JSON.stringify(r))), rdvReminders(env, helpers), syncInvites(env, helpers)]));
   },
 };
 

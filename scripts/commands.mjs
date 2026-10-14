@@ -4,6 +4,7 @@ const MANAGE_MESSAGES = String(0x2000);
 const MANAGE_ROLES = String(0x10000000);
 
 export const COMMANDS = [
+  { name: 'actualites', description: 'Vérifier les flux et publier les nouvelles actualités (administration)', default_member_permissions: '8', dm_permission: false },
   ...MODERATION_COMMANDS,
   { name: 'clear', description: 'Supprimer les derniers messages du salon (100 par défaut, épinglés conservés)', default_member_permissions: MANAGE_MESSAGES, dm_permission: false,
     options: [{ type: 4, name: 'nombre', description: 'Nombre de messages à examiner (1 à 100, récents et non épinglés)', required: false, min_value: 1, max_value: 100 }] },

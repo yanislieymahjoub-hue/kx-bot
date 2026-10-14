@@ -5,6 +5,7 @@
 // ni d'interdire les messages privés entre membres.
 import { store } from "./store.js";
 import { presentationModal } from "./presentation.js";
+import { NEWS_CHANNEL } from './news.js';
 
 const B = { VIEW: 1024n, SEND: 2048n, REACT: 64n, EMBED: 16384n, ATTACH: 32768n, HISTORY: 65536n, MENTION: 131072n,
   CONNECT: 1048576n, SPEAK: 2097152n, PUB_THREADS: 1n << 35n, PRIV_THREADS: 1n << 36n, SEND_THREADS: 1n << 38n, APP_CMDS: 1n << 31n };
@@ -36,6 +37,7 @@ export async function planEspaces(env, h) {
   const accueil = [C.bienvenue, C.reglement];
   const fde = [], prives = [], intacts = [];
   for (const c of chans) {
+    if (c.name === NEWS_CHANNEL && c.type === 0) { intacts.push(c); continue; }
     if (accueil.includes(c.id)) continue;
     if (c.type === 4 && chans.some((x) => accueil.includes(x.id) && x.parent_id === c.id)) { intacts.push(c); continue; } // catégorie de l'accueil
     if (c.id === staffCat || c.parent_id === staffCat) { intacts.push(c); continue; }

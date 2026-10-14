@@ -15,7 +15,7 @@ export const BOTS = {
   kx: {
     name: "K’X Bot", path: "/", id: "1558510006364545074", color: 0x8b5cf6, logo: "bot",
     about: "L'assistant de la communauté K’X Automatisation. Accueil, contact, tickets et réglages. Tape /aide pour tout voir.",
-    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut", "presentation"],
+    commands: ["kx", "rdv", "contact", "suggestion", "annonce", "kx-roles", "aide", "roi", "ticket", "kx-setup", "kx-publier", "kx-bot", "kx-espaces", "kx-statut", "presentation", "actualites"],
   },
   ia: {
     name: "K’X IA", path: "/ia", color: 0x22d3ee, logo: "ia",
@@ -47,7 +47,7 @@ export const BOTS = {
   veille: {
     name: "K’X Veille", path: "/veille", color: 0xec4899, logo: "veille",
     id: "1558565309814669312", publicKey: "42c10322a9a291743d376584f382855a67e3559123e4435dea07f60cc6a8dc2d",
-    about: "L'actu IA et automatisation, publiée chaque heure sur le serveur K’X.",
+    about: "L'actu IA et tech dans le salon public actualité. Vérification horaire, liens sourcés et alertes volontaires.",
     commands: ["veille", "kx-veille"],
     channels: ["veille_ia"],
   },

@@ -9,7 +9,7 @@ L'équipe de bots Discord du serveur KX Automatisation, hébergée sur un seul C
 | KX Académie | or | parcours FDE, défis, ateliers | `/academie` |
 | KX Missions | vert | missions clients des FDE certifiés | `/missions` |
 | KX Arène | rouge | points, quiz, classement, stats | `/arene` |
-| KX Veille | rose | actu IA chaque heure | `/veille` |
+| KX Veille | rose | actualités IA & tech publiques, vérification horaire | `/veille` |
 | KX Modération | arc-en-ciel | nettoyage, sanctions et journal privé, réservé à la modération | `/moderation` |
 
 Ajouter un bot: le créer sur le portail Discord, l'ajouter dans `src/bots.js` (identifiant, clé publique, commandes, salons), coller son jeton dans le secret GitHub `DISCORD_TOKEN_<CLÉ>`, pousser. Le déploiement règle son logo, sa description, son adresse et ses commandes, et affiche le lien d'invitation. Tant qu'il n'est pas sur le serveur, ses commandes restent sur KX Bot.
@@ -47,12 +47,27 @@ Animations: les bannières GIF sont rendues depuis `design/*.html` avec `node de
 | `/kx-setup` | admin | Sujets des salons, tags des forums, salon support, écran d'accueil, accueil guidé |
 | `/kx-publier` | admin | Logo KX, accueil animé dans #bienvenue, guide des commandes, droits des bots dans leurs salons, invitations réservées à Fondateur, Équipe KX et Mentor |
 | `/veille` | tous | Les dernières actus IA |
+| `/actualites` | administrateurs | Vérifie les flux, publie au maximum trois nouveaux articles et indique les livraisons à vérifier |
 | Clic droit message | tous | Résumer avec l'IA, Expliquer avec l'IA, Remercier l'auteur |
 | Clic droit membre | tous | Profil FDE |
 
 Tâches automatiques: veille IA toutes les heures, défi IA + fil « build in public » chaque lundi à 9h, top contributeurs chaque dimanche à 18h.
 
 Mémoire (points, quiz, quotas IA): Durable Object SQLite `KXStore`, gratuit.
+
+## Actualités publiques
+
+Le déploiement configure `📰・actualité`, visible par tous en lecture seule, avec un panneau épinglé. KX Veille publie les articles ; KX Bot sert de secours avec son jeton existant. Aucun nouveau bot, secret ou abonnement n’est nécessaire. L’ancien salon privé `veille-ia` conserve son historique mais ne reçoit plus le flux automatique.
+
+Sources configurées dans `src/config.js` : ActuIA, Hugging Face, OpenAI et Numerama. Chaque carte présente le titre, un court extrait du flux lorsqu’il existe, la date, la source et le bouton « Lire l’article ». Les textes restent dans la langue de leur source ; aucune synthèse inventée ni traduction automatique.
+
+Le cron horaire publie jusqu’à trois nouveaux articles datant de moins de 48 heures. La première exécution ne reprend que les trois plus récents et écarte le reste des archives présentes. Le registre SQLite garde les URLs normalisées ; un verrou empêche les exécutions concurrentes. Les flux indisponibles sont signalés dans les journaux, sans bloquer les autres.
+
+Les boutons « Activer les alertes » / « Désactiver les alertes » ajoutent ou retirent uniquement le rôle sans permissions `Alertes IA & Tech`. Ils fonctionnent aussi pour les nouveaux membres et les clients, sans modifier leur statut ou leurs accès FDE. Une seule mention de ce rôle par lot, aucun `@everyone` ni `@here`. Les réglages personnels Discord restent prioritaires ; ces boutons ne modifient pas le mode muet de Discord.
+
+`/actualites` (KX Bot, administrateurs) permet un contrôle manuel sans attendre le cron. Une réponse Discord 4xx permet une nouvelle tentative ; une coupure réseau ou une réponse 5xx conserve l’article en `pending` pour éviter une double publication. Le compteur « livraisons à vérifier » et les logs `NEWS_RUN` indiquent ces cas : contrôler le salon avant de réconcilier la ligne `news_articles`. Aucun renvoi automatique d’une livraison incertaine.
+
+Le script `scripts/setup-news.mjs` est idempotent, vérifie les permissions et ne modifie pas les salons privés existants. Il refuse un salon homonyme non géré par le module ou un rôle d’alerte ayant des permissions. Le plan de cloisonnement préserve le salon public.
 
 ## Nettoyage d’un salon
 

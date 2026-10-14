@@ -30,7 +30,7 @@ function fixture(t, statut = null) {
     calls.push({ path, method: opts.method, body });
     if (path.startsWith('/webhooks/')) { replies.push(body); return Response.json({}); }
     if (failure && failure(path, opts)) return Response.json({ message: 'Denied' }, { status: 403 });
-    if (path.endsWith('/roles') && opts.method === 'GET') return Response.json([{ id: 'role-b', name: 'Accès B' }, { id: 'admin-role', name: 'ADMIN' }]);
+    if (path.endsWith('/roles') && opts.method === 'GET') return Response.json([{ id: 'role-b', name: 'Accès B' }, { id: 'admin-role', name: 'ADMIN' }, { id: 'alert-role', name: 'Alertes IA & Tech', permissions: '0', managed: false }]);
     if (path.endsWith('/channels') && opts.method === 'GET') return Response.json([]);
     if (path === `/channels/${CHANNELS.presente_toi}/messages`) return Response.json({ id: 'intro-1' });
     if (opts.method === 'PUT' || opts.method === 'DELETE') return new Response(null, { status: 204 });
@@ -48,6 +48,20 @@ function fixture(t, statut = null) {
   }
   return { send, memory, calls, replies, fail(fn) { failure = fn; } };
 }
+
+test('new members and clients can subscribe to public news without admission or FDE role', async t => {
+  const f = fixture(t);
+  for (const statut of ['aucun', 'client']) {
+    f.memory.statutSet({ user: '42', statut });
+    const result = await f.send(3, { custom_id: 'news:on' });
+    assert.equal(result.type, 5);
+    assert.equal(result.data.flags, 64);
+    assert.equal(f.memory.statutGet({ user: '42' }).statut, statut);
+  }
+  const changes = f.calls.filter(c => c.method === 'PUT');
+  assert.equal(changes.length, 2);
+  assert.ok(changes.every(c => c.path === `/guilds/${GUILD_ID}/members/42/roles/alert-role`));
+});
 
 test('members with an existing Accès B role retain commands without a stored status', async t => {
   const f = fixture(t);

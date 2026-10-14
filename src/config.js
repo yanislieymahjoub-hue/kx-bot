@@ -38,7 +38,7 @@ export const TOPICS = {
   annonces: "Les nouvelles de K’X et de la communauté.",
   presente_toi: "Dis-nous qui tu es et ce que tu automatises.",
   discussion: "Discussion libre entre membres. /ia pour poser une question à l'IA.",
-  veille_ia: "Actus IA et automatisation, publiées automatiquement chaque heure.",
+  veille_ia: "Échanges autour de l’IA. Les publications automatiques sont dans le salon public actualité.",
   vos_creations: "Montre ce que tu construis, workflows, agents, scripts. Fil « build in public » chaque lundi.",
   detente: "Hors sujet, memes et pause café.",
   no_code: "n8n, Make, Zapier, entraide et astuces.",
@@ -73,11 +73,12 @@ export const SELF_ROLES = [["Notif lives", "🎓"], ["Notif annonces", "📢"], 
 
 export const RDV_URL = "https://kxautomatisation.fr";
 
-// Veille IA: flux RSS publiés toutes les heures dans #veille-ia
+// Actualités IA et tech : vérification horaire dans le salon public actualité.
 export const RSS_FEEDS = [
   "https://www.actuia.com/feed/",
   "https://huggingface.co/blog/feed.xml",
   "https://openai.com/news/rss.xml",
+  "https://www.numerama.com/feed/",
 ];
 
 // Modèle IA Cloudflare Workers AI (Qwen 3)
